@@ -1,7 +1,7 @@
 'use client';
 
 import ResumeBuilder from '@/features/resume/components/ResumeBuilder';
-
+import LivePreview from '@/features/resume/components/LivePreview';
 import { useState, useEffect } from 'react';
 
 interface Locale {
@@ -62,12 +62,17 @@ export default function ResumesPage() {
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       <h1 className="text-4xl font-bold mb-8">Resumes</h1>
 
-      <div className="w-full max-w-2xl mb-8">
-        <ResumeBuilder />
-        {message && <p className="mt-4 text-center text-red-500">{message}</p>}
+      <div className="flex w-full max-w-7xl gap-8">
+        <div className="flex-1">
+          <ResumeBuilder />
+          {message && <p className="mt-4 text-center text-red-500">{message}</p>}
+        </div>
+        <div className="flex-1 hidden md:block">
+          <LivePreview />
+        </div>
       </div>
 
-      <div className="w-full max-w-2xl">
+      <div className="w-full max-w-2xl mt-8">
         <h2 className="text-2xl font-semibold mb-4">Existing Resumes</h2>
         {resumes.length === 0 ? (
           <p>No resumes found.</p>
@@ -90,4 +95,5 @@ export default function ResumesPage() {
     </main>
   );
 }
+
 
