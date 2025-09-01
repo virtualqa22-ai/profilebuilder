@@ -1,10 +1,10 @@
 You are a senior product + full-stack engineer team. Build a production-ready web app:
 
 # APP NAME
-“ProFileBuilder — ATS-Optimized Resume Builder”
+“CareerVerve — ATS-Optimized Resume Builder”
 
 # OBJECTIVE
-Develop ProFileBuilder, a modern, SaaS, country-specific resume and cover letter builder platform. The application must offer dynamic, locale-compliant resume building, ATS score checking, JD matching, live previews, and collaborative editing—deployed on Render (frontend + backend) with MongoDB Atlas and fully free-hosted (within tier limits).
+Develop CareerVerve, a modern, SaaS, country-specific resume and cover letter builder platform. The application must offer dynamic, locale-compliant resume building, ATS score checking, JD matching, live previews, and collaborative editing—deployed on Render (frontend + backend) with MongoDB Atlas and fully free-hosted (within tier limits).
 
 # PRIMARY USERS
 - Job seekers (early, mid, senior)
@@ -70,7 +70,7 @@ Develop ProFileBuilder, a modern, SaaS, country-specific resume and cover letter
     Bundle optimization, code splitting, caching, virtualized rendering for previews, test coverage ≥80%, Lighthouse >90.
 
 # Non-Functional & Brand Requirements
-- Adhere to the ProFileBuilder Brand Kit:  
+- Adhere to the CareerVerve Brand Kit:  
   - Modern Blue (#3267E3/#2563EB), Rich Teal/Emerald, neutral backgrounds, golden yellow/coral accents  
   - Inter, Lato, Montserrat or Rubik/Arial, clear typography
   - Custom icon set, friendly/supportive tone, minimalism, responsive/mobile-first design
@@ -82,7 +82,7 @@ Develop ProFileBuilder, a modern, SaaS, country-specific resume and cover letter
 - Adopt DRY, modular, atomic design for all modules.
 - Enforce ESLint, Prettier, Husky, with autoformat on save and pre-commit.
 - CI/CD auto-deploys via GitHub Actions to Render; all env secrets set via dashboard.
-- All code, issues, and commits follow detailed rules in the ProFileBuilder Rule Book.
+- All code, issues, and commits follow detailed rules in the CareerVerve Rule Book.
 
 # ATS SCORING RUBRIC (compute in backend; expose breakdown)
 - Keyword Coverage (40%):

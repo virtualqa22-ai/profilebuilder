@@ -1,4 +1,4 @@
-# ProFileBuilder Brand Kit
+# CareerVerve Brand Kit
 
 Logo
 Type: Clean, minimalist wordmark with an optional clever emblem (e.g., stylized “P” for “Profile” or globe/bookmark icon).

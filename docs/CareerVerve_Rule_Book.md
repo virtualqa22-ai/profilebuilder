@@ -1,4 +1,4 @@
-ProFileBuilder Rule Book: Tech Stack, Structure & Standards
+CareerVerve Rule Book: Tech Stack, Structure & Standards
 
 #Tech Stack & Hosting
 Frontend: Next.js (React) with TypeScript, TailwindCSS, Shadcn UI

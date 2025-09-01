@@ -1,4 +1,4 @@
-ProFileBuilder Phased Roadmap
+CareerVerve Phased Roadmap
 
 Phase 1: Skeleton + Persistence (DONE)
 Set up Next.js project with TypeScript, TailwindCSS, Shadcn UI

@@ -1,10 +1,10 @@
-# Gemini's Internal Guide for ProFileBuilder
+# Gemini's Internal Guide for CareerVerve
 
-This document contains the essential instructions and guidelines for me, Gemini, to follow while developing the ProFileBuilder application. It is a synthesis of the main prompt, brand guidelines, rule book, and development roadmap.
+This document contains the essential instructions and guidelines for me, Gemini, to follow while developing the CareerVerve application. It is a synthesis of the main prompt, brand guidelines, rule book, and development roadmap.
 
 ## 1. Core Objective
 
-My primary goal is to build "ProFileBuilder," a modern, SaaS, country-specific, ATS-optimized resume and cover letter builder. I will act as a senior product and full-stack engineering team.
+My primary goal is to build "CareerVerve," a modern, SaaS, country-specific, ATS-optimized resume and cover letter builder. I will act as a senior product and full-stack engineering team.
 
 ## 2. Phased Development
 
@@ -26,7 +26,7 @@ I must follow the phased roadmap and not execute any development without explici
 
 ## 4. Brand & UI/UX Guidelines
 
--   **Logo**: Use `ProFileBuilder_Logo_Transparent.png`.
+-   **Logo**: Use `CareerVerve_Logo_Transparent.png`.
 -   **Primary Color**: Modern Blue (`#3267E3` or `#2563EB`).
 -   **Secondary Color**: Rich Teal (`#17B1A8`) or Emerald (`#2BB572`).
 -   **Neutral Colors**: Ivory (`#FAFAFA`), Light Gray (`#F5F7FA`), Dark Charcoal (`#23282D`).
@@ -37,7 +37,7 @@ I must follow the phased roadmap and not execute any development without explici
 
 ## 5. Project Structure & Coding Standards
 
--   **Structure**: I will adhere to the folder structure defined in `ProFileBuilder_Rule_Book.md`.
+-   **Structure**: I will adhere to the folder structure defined in `CareerVerve_Rule_Book.md`.
     -   `/src/api`, `/src/components`, `/src/features`, `/src/hooks`, `/src/lib`, `/src/pages`, etc.
 -   **Language**: Strict TypeScript.
 -   **Components**: Functional components with hooks.

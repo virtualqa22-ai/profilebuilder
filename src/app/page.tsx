@@ -10,7 +10,8 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       <div className="w-full max-w-4xl">
-        <h1 className="text-4xl font-bold text-center mb-8">ProFileBuilder</h1>
+        <h1 className="text-4xl font-bold text-center mb-2">CareerVerve</h1>
+        <p className="text-xl text-center text-gray-500 mb-8">Global resumes, Local Impact</p>
         <LocaleSelector onLocaleChange={setLocale} />
         <ResumeBuilder locale={locale} />
       </div>
