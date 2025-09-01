@@ -1,0 +1,59 @@
+{
+  "locale": "en-GB",
+  "name": "United Kingdom",
+  "dateFormat": "DD/MM/YYYY",
+  "sections": {
+    "personalInfo": {
+      "label": "Personal Information",
+      "fields": {
+        "name": { "label": "Full Name", "placeholder": "e.g., John Doe" },
+        "email": { "label": "Email Address", "placeholder": "e.g., john.doe@example.com" },
+        "phone": { "label": "Phone Number", "placeholder": "e.g., 07700 900000" },
+        "linkedin": { "label": "LinkedIn Profile", "placeholder": "e.g., linkedin.com/in/johndoe" },
+        "github": { "label": "GitHub Profile", "placeholder": "e.g., github.com/johndoe" },
+        "website": { "label": "Personal Website", "placeholder": "e.g., johndoe.com" }
+      },
+      "order": ["name", "email", "phone", "linkedin", "github", "website"]
+    },
+    "summary": {
+      "label": "Summary",
+      "placeholder": "A brief summary of your skills and experience."
+    },
+    "workExperience": {
+      "label": "Work Experience",
+      "fields": {
+        "title": { "label": "Job Title", "placeholder": "e.g., Software Engineer" },
+        "company": { "label": "Company", "placeholder": "e.g., Acme Corporation" },
+        "location": { "label": "Location", "placeholder": "e.g., London" },
+        "startDate": { "label": "Start Date", "placeholder": "e.g., Jan 2020" },
+        "endDate": { "label": "End Date", "placeholder": "e.g., Dec 2022 or Present" },
+        "description": { "label": "Responsibilities", "placeholder": "Describe your responsibilities and achievements." }
+      },
+      "order": ["title", "company", "location", "startDate", "endDate", "description"]
+    },
+    "education": {
+      "label": "Education",
+      "fields": {
+        "degree": { "label": "Degree", "placeholder": "e.g., Bachelor of Science" },
+        "major": { "label": "Major", "placeholder": "e.g., Computer Science" },
+        "university": { "label": "University", "placeholder": "e.g., University of Cambridge" },
+        "location": { "label": "Location", "placeholder": "e.g., Cambridge" },
+        "startDate": { "label": "Start Date", "placeholder": "e.g., Sep 2018" },
+        "endDate": { "label": "End Date", "placeholder": "e.g., May 2022" }
+      },
+      "order": ["degree", "major", "university", "location", "startDate", "endDate"]
+    },
+    "skills": {
+      "label": "Skills",
+      "placeholder": "e.g., JavaScript, React, Node.js"
+    },
+    "projects": {
+      "label": "Projects",
+      "placeholder": "Describe your projects."
+    },
+    "awardsCertifications": {
+      "label": "Awards and Certifications",
+      "placeholder": "List your awards and certifications."
+    }
+  }
+}

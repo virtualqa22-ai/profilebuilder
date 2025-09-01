@@ -1,0 +1,226 @@
+[
+  {
+    "country": "USA",
+    "countryCode": "US",
+    "sections": ["Header", "Summary", "Skills", "Work Experience", "Education"],
+    "required_fields": ["Name", "Contact Info", "Work Experience", "Education"],
+    "optional_fields": ["Summary", "Skills", "Certifications", "Projects"],
+    "formatting_rules": ["One page preferred (two pages for more experienced
+       candidates)", "Use bullet points"],
+         "other_notes": "Focus on achievements in work experience, with quantifiable
+       metrics.",
+         "schema": {
+           "personalInfo": {
+             "label": "Personal Information",
+             "fields": {
+               "name": { "label": "Full Name", "placeholder": "e.g., John Doe" },
+               "email": { "label": "Email Address", "placeholder": "e.g.,
+       john.doe@example.com" },
+               "phone": { "label": "Phone Number", "placeholder": "e.g., (555) 123-4567" },
+               "linkedin": { "label": "LinkedIn Profile", "placeholder": "e.g.,
+       linkedin.com/in/johndoe" },
+               "github": { "label": "GitHub Profile", "placeholder": "e.g.,
+       github.com/johndoe" },
+               "website": { "label": "Personal Website", "placeholder": "e.g., johndoe.com"
+       }
+             },
+             "order": ["name", "email", "phone", "linkedin", "github", "website"]
+           },
+           "summary": {
+             "label": "Summary",
+             "placeholder": "A brief summary of your skills and experience."
+           },
+           "workExperience": {
+             "label": "Work Experience",
+             "fields": {
+               "title": { "label": "Job Title", "placeholder": "e.g., Software Engineer" },
+               "company": { "label": "Company", "placeholder": "e.g., Acme Corporation" },
+               "location": { "label": "Location", "placeholder": "e.g., San Francisco, CA"
+       },
+               "startDate": { "label": "Start Date", "placeholder": "e.g., Jan 2020" },
+               "endDate": { "label": "End Date", "placeholder": "e.g., Dec 2022 or Present"
+       },
+               "description": { "label": "Responsibilities", "placeholder": "Describe your
+       responsibilities and achievements." }
+             },
+             "order": ["title", "company", "location", "startDate", "endDate",
+       "description"]
+           },
+           "education": {
+             "label": "Education",
+             "fields": {
+               "degree": { "label": "Degree", "placeholder": "e.g., Bachelor of Science" },
+               "major": { "label": "Major", "placeholder": "e.g., Computer Science" },
+               "university": { "label": "University", "placeholder": "e.g., University of
+       California, Berkeley" },
+               "location": { "label": "Location", "placeholder": "e.g., Berkeley, CA" },
+               "startDate": { "label": "Start Date", "placeholder": "e.g., Sep 2018" },
+               "endDate": { "label": "End Date", "placeholder": "e.g., May 2022" }
+             },
+             "order": ["degree", "major", "university", "location", "startDate", "endDate"]
+           },
+           "skills": {
+             "label": "Skills",
+             "placeholder": "e.g., JavaScript, React, Node.js"
+           },
+           "projects": {
+             "label": "Projects",
+             "placeholder": "Describe your projects."
+           },
+           "awardsCertifications": {
+             "label": "Awards and Certifications",
+             "placeholder": "List your awards and certifications."
+           }
+         }
+       },
+       {
+         "country": "Germany",
+         "countryCode": "DE",
+         "sections": ["Personal Information", "Professional Experience", "Education"],
+         "required_fields": ["Name", "Contact Info", "Work Experience", "Education"],
+         "optional_fields": ["Photo", "Birth Date", "Nationality", "Hobbies"],
+         "formatting_rules": ["One page preferred", "Clear, concise, and detailed", "Keep
+       photo formal"],
+         "other_notes": "Including a photo is common. Hobbies are optional but can show
+       personality."
+       },
+       {
+         "country": "UK",
+         "countryCode": "GB",
+         "sections": ["Header", "Personal Statement", "Work Experience", "Education"],
+         "required_fields": ["Name", "Contact Info", "Work Experience", "Education"],
+         "optional_fields": ["Personal Statement", "Skills", "Certifications"],
+         "formatting_rules": ["Use bullet points for job descriptions", "Keep it concise"],
+         "other_notes": "A photo is not required. The personal statement should highlight
+       career goals."
+       },
+       {
+         "country": "France",
+         "countryCode": "FR",
+         "sections": ["Identification", "Career Objective", "Experience", "Education"],
+         "required_fields": ["Name", "Contact Info", "Work Experience", "Education"],
+         "optional_fields": ["Photo", "Age", "Nationality", "Languages"],
+         "formatting_rules": ["One page or two pages", "Avoid excessive personal
+     information"],
+         "other_notes": "Including a photo is standard; age and nationality are often
+       included."
+       },
+       {
+         "country": "Canada",
+         "countryCode": "CA",
+         "sections": ["Header", "Professional Summary", "Work Experience", "Education"],
+         "required_fields": ["Name", "Contact Info", "Work Experience", "Education"],
+         "optional_fields": ["Skills", "Certifications", "Volunteer Experience"],
+         "formatting_rules": ["One to two pages", "Clear and professional layout"],
+         "other_notes": "Volunteer experience is often highly valued. Focus on
+       accomplishments in work experience."
+      },
+      {
+        "country": "India",
+        "countryCode": "IN",
+        "sections": ["Header", "Career Objective", "Skills", "Work Experience",
+      "Education"],
+        "required_fields": ["Name", "Contact Info", "Work Experience", "Education"],
+        "optional_fields": ["Objective", "Skills", "Certifications", "Projects"],
+        "formatting_rules": ["One to two pages", "Avoid a photo unless applying for a job
+      that requires it"],
+        "other_notes": "Career objective is important for entry-level resumes."
+      },
+      {
+        "country": "Australia",
+        "countryCode": "AU",
+        "sections": ["Header", "Professional Summary", "Work Experience", "Education"],
+        "required_fields": ["Name", "Contact Info", "Work Experience", "Education"],
+        "optional_fields": ["Skills", "Certifications", "Achievements"],
+        "formatting_rules": ["One to two pages", "Be concise and structured"],
+        "other_notes": "Personal summary is optional but preferred in professional roles."
+      },
+      {
+        "country": "Japan",
+        "countryCode": "JP",
+        "sections": ["Personal Information", "Career Summary", "Experience", "Education"],
+        "required_fields": ["Name", "Contact Info", "Work Experience", "Education"],
+        "optional_fields": ["Photo", "Age", "Marital Status", "Nationality"],
+        "formatting_rules": ["One to two pages", "Formal and polite language"],
+        "other_notes": "Photos, marital status, and age are commonly included. Attention
+       to detail is key."
+      },
+      {
+        "country": "South Korea",
+        "countryCode": "KR",
+        "sections": ["Personal Information", "Objective", "Work Experience", "Education"],
+        "required_fields": ["Name", "Contact Info", "Work Experience", "Education"],
+        "optional_fields": ["Photo", "Marital Status", "Military Service"],
+        "formatting_rules": ["One page preferred", "Structured and formal"],
+        "other_notes": "Personal information like photo, age, and marital status is
+       required."
+      },
+      {
+        "country": "Italy",
+        "countryCode": "IT",
+        "sections": ["Personal Information", "Career Objective", "Experience", "Education"
+       ],
+        "required_fields": ["Name", "Contact Info", "Work Experience", "Education"],
+        "optional_fields": ["Photo", "Age", "Nationality", "Languages"],
+        "formatting_rules": ["One page preferred", "Resume should be clear and concise"],
+        "other_notes": "Photo is standard. Avoid including too much personal info like
+       age."
+      },
+      {
+        "country": "Spain",
+        "countryCode": "ES",
+        "sections": ["Header", "Objective", "Professional Experience", "Education"],
+        "required_fields": ["Name", "Contact Info", "Work Experience", "Education"],
+        "optional_fields": ["Photo", "Age", "Nationality"],
+        "formatting_rules": ["One page or two pages", "Clear and professional"],
+        "other_notes": "A photo is typically included. It's common to state career
+       objectives."
+      },
+      {
+        "country": "Mexico",
+        "countryCode": "MX",
+        "sections": ["Personal Information", "Objective", "Work Experience", "Education"],
+        "required_fields": ["Name", "Contact Info", "Work Experience", "Education"],
+        "optional_fields": ["Photo", "Age", "Languages"],
+        "formatting_rules": ["One page preferred", "Formal and detailed"],
+        "other_notes": "Including a photo is common; avoid excess personal information."
+      },
+      {
+        "country": "Brazil",
+        "countryCode": "BR",
+        "sections": ["Personal Information", "Objective", "Work Experience", "Education"],
+        "required_fields": ["Name", "Contact Info", "Work Experience", "Education"],
+        "optional_fields": ["Photo", "Age", "Languages", "Skills"],
+        "formatting_rules": ["One page preferred", "Use bullet points"],
+        "other_notes": "A photo is often included. Keep the resume concise and focused."
+      },
+      {
+        "country": "China",
+        "countryCode": "CN",
+        "sections": ["Personal Information", "Objective", "Work Experience", "Education"],
+        "required_fields": ["Name", "Contact Info", "Work Experience", "Education"],
+        "optional_fields": ["Photo", "Age", "Languages", "Skills"],
+        "formatting_rules": ["One page preferred", "Clear and professional layout"],
+        "other_notes": "Photos and personal details like age and marital status are often
+       included."
+      },
+      {
+        "country": "Russia",
+        "countryCode": "RU",
+        "sections": ["Personal Information", "Objective", "Work Experience", "Education"],
+        "required_fields": ["Name", "Contact Info", "Work Experience", "Education"],
+        "optional_fields": ["Photo", "Age", "Languages", "Skills"],
+        "formatting_rules": ["One page preferred", "Formal layout"],
+        "other_notes": "Including a photo is standard; age and marital status are
+       optional."
+      },
+      {
+        "country": "Netherlands",
+        "countryCode": "NL",
+        "sections": ["Personal Information", "Objective", "Work Experience", "Education"],
+        "required_fields": ["Name", "Contact Info", "Work Experience", "Education"],
+        "optional_fields": ["Photo", "Languages", "Skills"],
+        "formatting_rules": ["One page preferred", "Use bullet points"],
+        "other_notes": "A photo is often included, but not mandatory."
+      }
+    ]

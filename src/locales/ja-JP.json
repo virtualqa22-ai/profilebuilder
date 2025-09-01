@@ -1,0 +1,59 @@
+{
+  "locale": "ja-JP",
+  "name": "日本",
+  "dateFormat": "YYYY/MM/DD",
+  "sections": {
+    "personalInfo": {
+      "label": "個人情報",
+      "fields": {
+        "name": { "label": "氏名", "placeholder": "例：山田太郎" },
+        "email": { "label": "メールアドレス", "placeholder": "例：yamada.taro@example.com" },
+        "phone": { "label": "電話番号", "placeholder": "例：090-1234-5678" },
+        "linkedin": { "label": "LinkedInプロフィール", "placeholder": "例：linkedin.com/in/taroyamada" },
+        "github": { "label": "GitHubプロフィール", "placeholder": "例：github.com/taroyamada" },
+        "website": { "label": "ウェブサイト", "placeholder": "例：taroyamada.com" }
+      },
+      "order": ["name", "email", "phone", "linkedin", "github", "website"]
+    },
+    "summary": {
+      "label": "概要",
+      "placeholder": "スキルや経験の概要を簡潔に記入してください。"
+    },
+    "workExperience": {
+      "label": "職務経歴",
+      "fields": {
+        "title": { "label": "役職", "placeholder": "例：ソフトウェアエンジニア" },
+        "company": { "label": "会社名", "placeholder": "例：株式会社アクメ" },
+        "location": { "label": "勤務地", "placeholder": "例：東京都" },
+        "startDate": { "label": "開始日", "placeholder": "例：2020年1月" },
+        "endDate": { "label": "終了日", "placeholder": "例：2022年12月または現在" },
+        "description": { "label": "職務内容", "placeholder": "職務内容や実績を記述してください。" }
+      },
+      "order": ["title", "company", "location", "startDate", "endDate", "description"]
+    },
+    "education": {
+      "label": "学歴",
+      "fields": {
+        "degree": { "label": "学位", "placeholder": "例：学士" },
+        "major": { "label": "専攻", "placeholder": "例：コンピュータサイエンス" },
+        "university": { "label": "大学名", "placeholder": "例：東京大学" },
+        "location": { "label": "所在地", "placeholder": "例：東京都" },
+        "startDate": { "label": "開始日", "placeholder": "例：2018年9月" },
+        "endDate": { "label": "終了日", "placeholder": "例：2022年5月" }
+      },
+      "order": ["degree", "major", "university", "location", "startDate", "endDate"]
+    },
+    "skills": {
+      "label": "スキル",
+      "placeholder": "例：JavaScript, React, Node.js"
+    },
+    "projects": {
+      "label": "プロジェクト",
+      "placeholder": "プロジェクト内容を記述してください。"
+    },
+    "awardsCertifications": {
+      "label": "受賞・認定",
+      "placeholder": "受賞歴や認定資格を記載してください。"
+    }
+  }
+}

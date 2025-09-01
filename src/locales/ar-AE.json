@@ -1,0 +1,59 @@
+{
+  "locale": "ar-AE",
+  "name": "الإمارات العربية المتحدة",
+  "dateFormat": "DD/MM/YYYY",
+  "sections": {
+    "personalInfo": {
+      "label": "معلومات شخصية",
+      "fields": {
+        "name": { "label": "الاسم الكامل", "placeholder": "مثال: أحمد محمد" },
+        "email": { "label": "البريد الإلكتروني", "placeholder": "مثال: ahmed.mohamed@example.com" },
+        "phone": { "label": "رقم الهاتف", "placeholder": "مثال: +971 50 123 4567" },
+        "linkedin": { "label": "ملف LinkedIn", "placeholder": "مثال: linkedin.com/in/ahmedmohamed" },
+        "github": { "label": "ملف GitHub", "placeholder": "مثال: github.com/ahmedmohamed" },
+        "website": { "label": "الموقع الشخصي", "placeholder": "مثال: ahmedmohamed.ae" }
+      },
+      "order": ["name", "email", "phone", "linkedin", "github", "website"]
+    },
+    "summary": {
+      "label": "ملخص",
+      "placeholder": "ملخص موجز لمهاراتك وخبراتك."
+    },
+    "workExperience": {
+      "label": "الخبرة العملية",
+      "fields": {
+        "title": { "label": "المسمى الوظيفي", "placeholder": "مثال: مهندس برمجيات" },
+        "company": { "label": "الشركة", "placeholder": "مثال: شركة إعمار" },
+        "location": { "label": "الموقع", "placeholder": "مثال: دبي" },
+        "startDate": { "label": "تاريخ البدء", "placeholder": "مثال: يناير 2020" },
+        "endDate": { "label": "تاريخ الانتهاء", "placeholder": "مثال: ديسمبر 2022 أو حتى الآن" },
+        "description": { "label": "المسؤوليات", "placeholder": "صف مسؤولياتك وإنجازاتك." }
+      },
+      "order": ["title", "company", "location", "startDate", "endDate", "description"]
+    },
+    "education": {
+      "label": "التعليم",
+      "fields": {
+        "degree": { "label": "الدرجة العلمية", "placeholder": "مثال: بكالوريوس العلوم" },
+        "major": { "label": "التخصص", "placeholder": "مثال: علوم الحاسب" },
+        "university": { "label": "الجامعة", "placeholder": "مثال: جامعة خليفة" },
+        "location": { "label": "الموقع", "placeholder": "مثال: أبوظبي" },
+        "startDate": { "label": "تاريخ البدء", "placeholder": "مثال: سبتمبر 2018" },
+        "endDate": { "label": "تاريخ الانتهاء", "placeholder": "مثال: مايو 2022" }
+      },
+      "order": ["degree", "major", "university", "location", "startDate", "endDate"]
+    },
+    "skills": {
+      "label": "المهارات",
+      "placeholder": "مثال: JavaScript, React, Node.js"
+    },
+    "projects": {
+      "label": "المشاريع",
+      "placeholder": "صف مشاريعك."
+    },
+    "awardsCertifications": {
+      "label": "الجوائز والشهادات",
+      "placeholder": "اذكر جوائزك وشهاداتك."
+    }
+  }
+}
