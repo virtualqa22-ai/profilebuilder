@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import { parseResume } from './resumeParser';
 import { getLocaleByCode } from './localeService';
 

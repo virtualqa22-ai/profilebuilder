@@ -28,6 +28,7 @@ interface Education {
 }
 
 export interface ResumeData {
+  _id?: string; // Added for MongoDB compatibility
   personalInfo: PersonalInfo;
   summary: string;
   workExperience: WorkExperience[];

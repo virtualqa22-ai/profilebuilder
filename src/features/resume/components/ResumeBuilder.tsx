@@ -13,6 +13,8 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [showComments, setShowComments] = useState<Record<string, boolean>>({});
   const [comments, setComments] = useState<any[]>([]);
+  const [showOptionalFields, setShowOptionalFields] = useState<Record<string, boolean>>({});
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const selectedLocaleData = getLocaleByCode(locale);
 
@@ -39,6 +41,20 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
   }, [resume]);
 
   const handleFieldChange = (sectionKey: string, fieldName: string, value: string) => {
+    const field = selectedLocaleData?.sections[sectionKey]?.fields?.[fieldName];
+    if (field?.optional && !showOptionalFields[fieldName]) {
+      // If an optional field is being hidden, clear its value
+      switch (sectionKey) {
+        case 'personalInfo':
+          updatePersonalInfo({ [fieldName]: '' });
+          break;
+        // Add other sections if they have optional fields
+        default:
+          break;
+      }
+      return;
+    }
+
     switch (sectionKey) {
       case 'personalInfo':
         updatePersonalInfo({ [fieldName]: value });
@@ -101,7 +117,59 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
     removeEducation(index);
   };
 
+  const validateResume = () => {
+    const errors: Record<string, string> = {};
+    if (!selectedLocaleData) return errors;
+
+    Object.entries(selectedLocaleData.sections).forEach(([sectionKey, section]) => {
+      if (section.fields && section.order) {
+        section.order.forEach((fieldName: string) => {
+          const field = section.fields![fieldName];
+          const inputId = `${sectionKey}-${fieldName}`;
+          if (!field.optional && !(resume[sectionKey as keyof typeof resume] as any)?.[fieldName]) {
+            errors[inputId] = `${field.label} is required.`;
+          }
+        });
+      } else if (section.placeholder && !section.fields) {
+        // For sections like summary, skills, projects, awardsCertifications
+        const isSectionOptional = (selectedLocaleData.sections as any)[sectionKey]?.optional;
+        if (!isSectionOptional && !(resume[sectionKey as keyof typeof resume] as string)) {
+          errors[sectionKey] = `${section.label} is required.`;
+        }
+      }
+    });
+
+    // Validate work experience
+    resume.workExperience.forEach((exp, index) => {
+      selectedLocaleData.sections.workExperience.order.forEach((fieldName: string) => {
+        const field = selectedLocaleData.sections.workExperience.fields![fieldName];
+        const inputId = `workExperience-${index}-${fieldName}`;
+        if (!field.optional && !exp[fieldName as keyof typeof exp]) {
+          errors[inputId] = `${field.label} in Work Experience #${index + 1} is required.`;
+        }
+      });
+    });
+
+    // Validate education
+    resume.education.forEach((edu, index) => {
+      selectedLocaleData.sections.education.order.forEach((fieldName: string) => {
+        const field = selectedLocaleData.sections.education.fields![fieldName];
+        const inputId = `education-${index}-${fieldName}`;
+        if (!field.optional && !edu[fieldName as keyof typeof edu]) {
+          errors[inputId] = `${field.label} in Education #${index + 1} is required.`;
+        }
+      });
+    });
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleExportPdf = async () => {
+    if (!validateResume()) {
+      setMessage('Please fill in all required fields.');
+      return;
+    }
     console.log('Exporting resume to PDF...', resume);
     try {
       const response = await fetch('/api/generate-pdf', {
@@ -133,6 +201,10 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
   };
 
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!validateResume()) {
+      setMessage('Please fill in all required fields before importing.');
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) {
       return;
@@ -215,16 +287,29 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
                 const inputId = `${sectionKey}-${fieldName}`;
                 return (
                   <div key={fieldName} className="relative">
-                    <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
-                    <input
-                      id={inputId}
-                      type="text"
-                      name={fieldName}
-                      placeholder={field.placeholder}
-                      value={(resume[sectionKey as keyof typeof resume] as any)?.[fieldName] || ''}
-                      onChange={(e) => handleFieldChange(sectionKey, fieldName, e.target.value)}
-                      className="p-2 border rounded text-black w-full focus:ring-2 focus:ring-blue-500"
-                    />
+                    <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1">
+                      {field.label}
+                      {field.optional && (
+                        <input
+                          type="checkbox"
+                          className="ml-2"
+                          checked={showOptionalFields[fieldName] || false}
+                          onChange={() => setShowOptionalFields(prev => ({ ...prev, [fieldName]: !prev[fieldName] }))}
+                        />
+                      )}
+                    </label>
+                    {(field.optional === undefined || !field.optional || showOptionalFields[fieldName]) && (
+                      <input
+                        id={inputId}
+                        type="text"
+                        name={fieldName}
+                        placeholder={field.placeholder}
+                        value={(resume[sectionKey as keyof typeof resume] as any)?.[fieldName] || ''}
+                        onChange={(e) => handleFieldChange(sectionKey, fieldName, e.target.value)}
+                        className={`p-2 border rounded text-black w-full focus:ring-2 ${validationErrors[inputId] ? 'border-red-500' : 'focus:ring-blue-500'}`}
+                      />
+                    )}
+                    {validationErrors[inputId] && <p className="text-red-500 text-xs mt-1">{validationErrors[inputId]}</p>}
                     <button onClick={() => toggleComments(inputId)} className="absolute top-0 right-0 p-1 text-gray-500 hover:text-black" aria-label={`Comment on ${field.label}`}>
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 11a1 1 0 112 0v1a1 1 0 11-2 0v-1zm0-4a1 1 0 112 0v1a1 1 0 11-2 0V7z" clipRule="evenodd" />
@@ -256,9 +341,10 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
                 placeholder={section.placeholder}
                 value={resume[sectionKey as keyof typeof resume] as string}
                 onChange={(e) => handleFieldChange(sectionKey, sectionKey, e.target.value)}
-                className="p-2 border rounded w-full text-black focus:ring-2 focus:ring-blue-500"
+                className={`p-2 border rounded w-full text-black focus:ring-2 ${validationErrors[sectionKey] ? 'border-red-500' : 'focus:ring-blue-500'}`}
                 rows={5}
               ></textarea>
+              {validationErrors[sectionKey] && <p className="text-red-500 text-xs mt-1">{validationErrors[sectionKey]}</p>}
               <button onClick={() => toggleComments(sectionKey)} className="absolute top-0 right-0 p-1 text-gray-500 hover:text-black" aria-label={`Comment on ${section.label}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 11a1 1 0 112 0v1a1 1 0 11-2 0v-1zm0-4a1 1 0 112 0v1a1 1 0 11-2 0V7z" clipRule="evenodd" />
@@ -300,8 +386,9 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
                       placeholder={field.placeholder}
                       value={exp[fieldName as keyof typeof exp]}
                       onChange={(e) => handleWorkExperienceChange(index, e)}
-                      className="p-2 border rounded text-black w-full focus:ring-2 focus:ring-blue-500"
+                      className={`p-2 border rounded text-black w-full focus:ring-2 ${validationErrors[inputId] ? 'border-red-500' : 'focus:ring-blue-500'}`}
                     />
+                    {validationErrors[inputId] && <p className="text-red-500 text-xs mt-1">{validationErrors[inputId]}</p>}
                     <button onClick={() => toggleComments(inputId)} className="absolute top-0 right-0 p-1 text-gray-500 hover:text-black" aria-label={`Comment on ${field.label}`}>
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 11a1 1 0 112 0v1a1 1 0 11-2 0v-1zm0-4a1 1 0 112 0v1a1 1 0 11-2 0V7z" clipRule="evenodd" />
@@ -331,9 +418,10 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
                 placeholder={selectedLocaleData.sections.workExperience.fields!.description.placeholder}
                 value={exp.description}
                 onChange={(e) => handleWorkExperienceChange(index, e)}
-                className="p-2 border rounded w-full text-black focus:ring-2 focus:ring-blue-500"
+                className={`p-2 border rounded w-full text-black focus:ring-2 ${validationErrors[`workExperience-description-${index}`] ? 'border-red-500' : 'focus:ring-blue-500'}`}
                 rows={4}
               ></textarea>
+              {validationErrors[`workExperience-description-${index}`] && <p className="text-red-500 text-xs mt-1">{validationErrors[`workExperience-description-${index}`]}</p>}
               <button onClick={() => toggleComments(`workExperience-description-${index}`)} className="absolute top-0 right-0 p-1 text-gray-500 hover:text-black" aria-label={`Comment on work experience description`}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 11a1 1 0 112 0v1a1 1 0 11-2 0v-1zm0-4a1 1 0 112 0v1a1 1 0 11-2 0V7z" clipRule="evenodd" />
@@ -388,8 +476,9 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
                       placeholder={field.placeholder}
                       value={edu[fieldName as keyof typeof edu]}
                       onChange={(e) => handleEducationChange(index, e)}
-                      className="p-2 border rounded text-black w-full focus:ring-2 focus:ring-blue-500"
+                      className={`p-2 border rounded text-black w-full focus:ring-2 ${validationErrors[inputId] ? 'border-red-500' : 'focus:ring-blue-500'}`}
                     />
+                    {validationErrors[inputId] && <p className="text-red-500 text-xs mt-1">{validationErrors[inputId]}</p>}
                     <button onClick={() => toggleComments(inputId)} className="absolute top-0 right-0 p-1 text-gray-500 hover:text-black" aria-label={`Comment on ${field.label}`}>
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 11a1 1 0 112 0v1a1 1 0 11-2 0v-1zm0-4a1 1 0 112 0v1a1 1 0 11-2 0V7z" clipRule="evenodd" />

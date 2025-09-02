@@ -10,8 +10,8 @@
         "email": { "label": "Email Address", "placeholder": "john.doe@example.com" },
         "phone": { "label": "Phone Number", "placeholder": "(555) 123-4567" },
         "linkedin": { "label": "LinkedIn Profile", "placeholder": "linkedin.com/in/johndoe" },
-        "github": { "label": "GitHub Profile", "placeholder": "github.com/johndoe" },
-        "website": { "label": "Personal Website", "placeholder": "johndoe.com" }
+        "github": { "label": "GitHub Profile", "placeholder": "github.com/johndoe", "optional": true },
+        "website": { "label": "Personal Website", "placeholder": "johndoe.com", "optional": true }
       },
       "order": ["name", "email", "phone", "linkedin", "github", "website"]
     },

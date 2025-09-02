@@ -18,6 +18,7 @@ export interface ILocale {
         [key: string]: {
           label: string;
           placeholder: string;
+          optional?: boolean;
         };
       };
       order?: string[];

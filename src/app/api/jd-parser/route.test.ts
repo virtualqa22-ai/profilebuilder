@@ -1,6 +1,7 @@
 /**
  * @jest-environment node
  */
+/// <reference types="jest" />
 
 import { POST } from './route';
 

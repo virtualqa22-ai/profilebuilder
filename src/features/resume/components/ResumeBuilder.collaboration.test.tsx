@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import ResumeBuilder from './ResumeBuilder';

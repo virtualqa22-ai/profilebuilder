@@ -5,11 +5,13 @@
       "dom.iterable",
       "esnext"
     ],
+    "types": ["jest", "jest-environment-jsdom"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": false,
     "noEmit": true,
     "incremental": true,
+    "target": "es2017",
     "module": "esnext",
     "esModuleInterop": true,
     "moduleResolution": "node",
