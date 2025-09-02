@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     const resumeData = parseResume(fullText, locale);
     return NextResponse.json(resumeData);
   } catch (error: any) {
-    console.error('Error parsing PDF:', error);
-    return NextResponse.json({ error: 'Failed to parse PDF', details: error.message }, { status: 500 });
+    console.error('Error processing PDF or parsing resume:', error);
+    return NextResponse.json({ error: 'Failed to process PDF or parse resume', details: error.message }, { status: 500 });
   }
 }
