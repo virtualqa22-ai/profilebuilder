@@ -6,12 +6,12 @@
     "personalInfo": {
       "label": "Personal Information",
       "fields": {
-        "name": { "label": "Full Name", "placeholder": "e.g., John Doe" },
-        "email": { "label": "Email Address", "placeholder": "e.g., john.doe@example.com" },
-        "phone": { "label": "Phone Number", "placeholder": "e.g., (555) 123-4567" },
-        "linkedin": { "label": "LinkedIn Profile", "placeholder": "e.g., linkedin.com/in/johndoe" },
-        "github": { "label": "GitHub Profile", "placeholder": "e.g., github.com/johndoe" },
-        "website": { "label": "Personal Website", "placeholder": "e.g., johndoe.com" }
+        "name": { "label": "Full Name", "placeholder": "John Doe" },
+        "email": { "label": "Email Address", "placeholder": "john.doe@example.com" },
+        "phone": { "label": "Phone Number", "placeholder": "(555) 123-4567" },
+        "linkedin": { "label": "LinkedIn Profile", "placeholder": "linkedin.com/in/johndoe" },
+        "github": { "label": "GitHub Profile", "placeholder": "github.com/johndoe" },
+        "website": { "label": "Personal Website", "placeholder": "johndoe.com" }
       },
       "order": ["name", "email", "phone", "linkedin", "github", "website"]
     },
@@ -22,11 +22,11 @@
     "workExperience": {
       "label": "Work Experience",
       "fields": {
-        "title": { "label": "Job Title", "placeholder": "e.g., Software Engineer" },
-        "company": { "label": "Company", "placeholder": "e.g., Acme Corporation" },
-        "location": { "label": "Location", "placeholder": "e.g., San Francisco, CA" },
-        "startDate": { "label": "Start Date", "placeholder": "e.g., Jan 2020" },
-        "endDate": { "label": "End Date", "placeholder": "e.g., Dec 2022 or Present" },
+        "title": { "label": "Job Title", "placeholder": "Software Engineer" },
+        "company": { "label": "Company", "placeholder": "Acme Corporation" },
+        "location": { "label": "Location", "placeholder": "San Francisco, CA" },
+        "startDate": { "label": "Start Date", "placeholder": "Jan 2020" },
+        "endDate": { "label": "End Date", "placeholder": "Dec 2022 or Present" },
         "description": { "label": "Responsibilities", "placeholder": "Describe your responsibilities and achievements." }
       },
       "order": ["title", "company", "location", "startDate", "endDate", "description"]
@@ -34,18 +34,18 @@
     "education": {
       "label": "Education",
       "fields": {
-        "degree": { "label": "Degree", "placeholder": "e.g., Bachelor of Science" },
-        "major": { "label": "Major", "placeholder": "e.g., Computer Science" },
-        "university": { "label": "University", "placeholder": "e.g., University of California, Berkeley" },
-        "location": { "label": "Location", "placeholder": "e.g., Berkeley, CA" },
-        "startDate": { "label": "Start Date", "placeholder": "e.g., Sep 2018" },
-        "endDate": { "label": "End Date", "placeholder": "e.g., May 2022" }
+        "degree": { "label": "Degree", "placeholder": "Bachelor of Science" },
+        "major": { "label": "Major", "placeholder": "Computer Science" },
+        "university": { "label": "University", "placeholder": "University of California, Berkeley" },
+        "location": { "label": "Location", "placeholder": "Berkeley, CA" },
+        "startDate": { "label": "Start Date", "placeholder": "Sep 2018" },
+        "endDate": { "label": "End Date", "placeholder": "May 2022" }
       },
       "order": ["degree", "major", "university", "location", "startDate", "endDate"]
     },
     "skills": {
       "label": "Skills",
-      "placeholder": "e.g., JavaScript, React, Node.js"
+      "placeholder": "JavaScript, React, Node.js"
     },
     "projects": {
       "label": "Projects",

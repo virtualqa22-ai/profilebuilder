@@ -292,7 +292,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
                 const inputId = `workExperience-${index}-${fieldName}`;
                 return (
                   <div key={fieldName} className="relative">
-                    <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1">{field.placeholder}</label>
+                    <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
                     <input
                       id={inputId}
                       type="text"
@@ -302,7 +302,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
                       onChange={(e) => handleWorkExperienceChange(index, e)}
                       className="p-2 border rounded text-black w-full focus:ring-2 focus:ring-blue-500"
                     />
-                    <button onClick={() => toggleComments(inputId)} className="absolute top-0 right-0 p-1 text-gray-500 hover:text-black" aria-label={`Comment on ${field.placeholder}`}>
+                    <button onClick={() => toggleComments(inputId)} className="absolute top-0 right-0 p-1 text-gray-500 hover:text-black" aria-label={`Comment on ${field.label}`}>
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 11a1 1 0 112 0v1a1 1 0 11-2 0v-1zm0-4a1 1 0 112 0v1a1 1 0 11-2 0V7z" clipRule="evenodd" />
                       </svg>
@@ -380,7 +380,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
                 const inputId = `education-${index}-${fieldName}`;
                 return (
                   <div key={fieldName} className="relative">
-                    <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1">{field.placeholder}</label>
+                    <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
                     <input
                       id={inputId}
                       type="text"
@@ -390,7 +390,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
                       onChange={(e) => handleEducationChange(index, e)}
                       className="p-2 border rounded text-black w-full focus:ring-2 focus:ring-blue-500"
                     />
-                    <button onClick={() => toggleComments(inputId)} className="absolute top-0 right-0 p-1 text-gray-500 hover:text-black" aria-label={`Comment on ${field.placeholder}`}>
+                    <button onClick={() => toggleComments(inputId)} className="absolute top-0 right-0 p-1 text-gray-500 hover:text-black" aria-label={`Comment on ${field.label}`}>
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 11a1 1 0 112 0v1a1 1 0 11-2 0v-1zm0-4a1 1 0 112 0v1a1 1 0 11-2 0V7z" clipRule="evenodd" />
                       </svg>
