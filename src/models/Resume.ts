@@ -1,5 +1,20 @@
 import mongoose from 'mongoose';
 
+const CommentSchema = new mongoose.Schema({
+  field: {
+    type: String,
+    required: true,
+  },
+  text: {
+    type: String,
+    required: true,
+  },
+  author: {
+    type: String,
+    required: true,
+  },
+}, { timestamps: true });
+
 const ResumeSchema = new mongoose.Schema({
   title: {
     type: String,
@@ -18,6 +33,7 @@ const ResumeSchema = new mongoose.Schema({
     type: Number,
     default: 1,
   },
+  comments: [CommentSchema],
 }, { timestamps: true });
 
 const Resume = mongoose.models.Resume || mongoose.model('Resume', ResumeSchema);
