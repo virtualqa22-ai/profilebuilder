@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import LocaleSelector from '@/components/ui/LocaleSelector';
-import ResumeBuilder from '@/features/resume/components/ResumeBuilder';
 
 export default function Home() {
   const [locale, setLocale] = useState('en-US');
@@ -13,7 +12,6 @@ export default function Home() {
         <h1 className="text-4xl font-bold text-center mb-2">CareerVerve</h1>
         <p className="text-xl text-center text-gray-500 mb-8">Global resumes, Local Impact</p>
         <LocaleSelector onLocaleChange={setLocale} />
-        <ResumeBuilder locale={locale} />
       </div>
     </main>
   );
