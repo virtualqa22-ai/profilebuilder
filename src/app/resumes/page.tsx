@@ -3,24 +3,19 @@
 import ResumeBuilder from '@/features/resume/components/ResumeBuilder';
 import LivePreview from '@/features/resume/components/LivePreview';
 import { useState, useEffect } from 'react';
-
-interface Locale {
-  _id: string;
-  name: string;
-  code: string;
-}
+import LocaleSelector from '@/components/ui/LocaleSelector';
 
 interface Resume {
   _id: string;
   title: string;
   content: string;
-  locale: Locale;
+  locale: string; // Changed to string
 }
 
 export default function ResumesPage() {
   const [resumes, setResumes] = useState<Resume[]>([]);
-  const [locales, setLocales] = useState<Locale[]>([]);
   const [message, setMessage] = useState('');
+  const [selectedLocale, setSelectedLocale] = useState('en-US'); // New state for selected locale
 
   useEffect(() => {
     fetchResumes();
@@ -64,7 +59,8 @@ export default function ResumesPage() {
 
       <div className="flex w-full max-w-7xl gap-8">
         <div className="flex-1">
-          <ResumeBuilder />
+          <LocaleSelector onLocaleChange={setSelectedLocale} /> {/* Add LocaleSelector */}
+          <ResumeBuilder locale={selectedLocale} /> {/* Pass selectedLocale to ResumeBuilder */}
           {message && <p className="mt-4 text-center text-red-500">{message}</p>}
         </div>
         <div className="flex-1 hidden md:block">
@@ -80,7 +76,7 @@ export default function ResumesPage() {
           <ul className="space-y-2">
             {resumes.map((resume) => (
               <li key={resume._id} className="flex justify-between items-center p-3 border rounded bg-gray-100 text-black">
-                <span>{resume.title} (Locale: {resume.locale?.name || 'N/A'})</span>
+                <span>{resume.title} (Locale: {resume.locale || 'N/A'})</span>
                 <button
                   onClick={() => deleteResume(resume._id)}
                   className="p-2 bg-red-500 text-white rounded"
@@ -95,5 +91,3 @@ export default function ResumesPage() {
     </main>
   );
 }
-
-

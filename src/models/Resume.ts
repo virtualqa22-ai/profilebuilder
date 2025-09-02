@@ -11,10 +11,15 @@ const ResumeSchema = new mongoose.Schema({
     required: [true, 'Please provide content for this resume.'],
   },
   locale: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Locale',
+    type: String,
     required: [true, 'Please specify a locale for this resume.'],
   },
-});
+  version: {
+    type: Number,
+    default: 1,
+  },
+}, { timestamps: true });
 
-export default mongoose.models.Resume || mongoose.model('Resume', ResumeSchema);
+const Resume = mongoose.models.Resume || mongoose.model('Resume', ResumeSchema);
+
+export default Resume;

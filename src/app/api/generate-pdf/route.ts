@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import puppeteer from 'puppeteer';
+// import { renderToStaticMarkup } from 'react-dom/server';
+// import ResumeTemplate from '@/features/resume/components/ResumeTemplate';
+// import { ResumeData } from '@/store/resumeStore';
 
 export async function POST(req: Request) {
   try {
     const resumeData = await req.json();
 
-    // Basic HTML generation from resumeData
-    // This part would be more sophisticated in a real app,
-    // potentially using a templating engine or React components rendered to string.
+    // Reverting to a simple HTML string for testing
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -29,6 +30,7 @@ export async function POST(req: Request) {
         <div class="container">
           <h1>${resumeData.personalInfo.name}</h1>
           <p>${resumeData.personalInfo.email} | ${resumeData.personalInfo.phone} | ${resumeData.personalInfo.linkedin}</p>
+          <p>Version: ${resumeData.version}</p>
 
           <section>
             <h2 class="section-title">Summary</h2>
@@ -78,13 +80,14 @@ export async function POST(req: Request) {
     const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
     await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-    const pdfBuffer = await page.pdf({ format: 'A4' });
+    const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
+    const pdfBlob = new Blob([Buffer.from(pdfBuffer).buffer], { type: 'application/pdf' });
     await browser.close();
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(pdfBlob, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': 'attachment; filename="resume.pdf"',
+        'Content-Disposition': `attachment; filename="resume_v${resumeData.version}.pdf"`,
       },
     });
   } catch (error: any) {

@@ -42,7 +42,7 @@ const LivePreview: React.FC<LivePreviewProps> = () => {
           dateRange: {
             float: 'right',
             color: '#7f8c8d',
-          },
+          } as React.CSSProperties,
         };
       case 'default':
       default:
@@ -75,7 +75,7 @@ const LivePreview: React.FC<LivePreviewProps> = () => {
           },
           dateRange: {
             float: 'right',
-          },
+          } as React.CSSProperties,
         };
     }
   };

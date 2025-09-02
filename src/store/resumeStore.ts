@@ -27,7 +27,7 @@ interface Education {
   endDate: string;
 }
 
-interface ResumeData {
+export interface ResumeData {
   personalInfo: PersonalInfo;
   summary: string;
   workExperience: WorkExperience[];
@@ -36,6 +36,7 @@ interface ResumeData {
   projects: string;
   awardsCertifications: string;
   locale: string;
+  version: number;
 }
 
 interface ResumeState {
@@ -53,6 +54,7 @@ interface ResumeState {
   updateProjects: (projects: string) => void;
   updateAwardsCertifications: (awardsCertifications: string) => void;
   updateLocale: (locale: string) => void;
+  updateVersion: () => void;
 }
 
 export const useResumeStore = create<ResumeState>((set) => ({
@@ -72,6 +74,7 @@ export const useResumeStore = create<ResumeState>((set) => ({
     projects: '',
     awardsCertifications: '',
     locale: '',
+    version: 1,
   },
   setResume: (resume) => set({ resume }),
   updatePersonalInfo: (info) =>
@@ -145,5 +148,9 @@ export const useResumeStore = create<ResumeState>((set) => ({
   updateLocale: (locale) =>
     set((state) => ({
       resume: { ...state.resume, locale },
+    })),
+  updateVersion: () =>
+    set((state) => ({
+      resume: { ...state.resume, version: state.resume.version + 1 },
     })),
 }));
