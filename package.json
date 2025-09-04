@@ -13,6 +13,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@whatwg-node/fetch": "^0.10.10",
     "mongoose": "^8.18.0",
     "next": "14.2.5",
     "next-auth": "^4.24.11",
@@ -33,6 +34,7 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/supertest": "^6.0.3",
     "babel-jest": "^30.1.1",
     "cross-env": "^10.0.0",
     "eslint": "^8",
@@ -41,10 +43,12 @@
     "jest": "^30.1.1",
     "jest-environment-jsdom": "^30.1.1",
     "jest-transform-stub": "^2.0.0",
+    "next-test-api-route-handler": "^5.0.3",
     "node-mocks-http": "^1.17.2",
     "playwright": "^1.55.0",
     "postcss": "^8",
     "prettier": "^3.6.2",
+    "supertest": "^7.1.4",
     "tailwindcss": "^3.4.1",
     "ts-jest": "^29.4.1",
     "typescript": "^5"

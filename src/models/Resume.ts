@@ -33,6 +33,18 @@ const ResumeSchema = new mongoose.Schema({
     type: Number,
     default: 1,
   },
+  photos: { // New optional field
+    type: String,
+  },
+  certifications: { // New optional field
+    type: String,
+  },
+  hobbies: { // New optional field
+    type: String,
+  },
+  references: { // New optional field
+    type: String,
+  },
   comments: [CommentSchema],
 }, { timestamps: true });
 

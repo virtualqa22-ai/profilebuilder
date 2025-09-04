@@ -73,6 +73,16 @@ export async function POST(req: Request) {
         });
       }
 
+      // Validate optional fields based on locale schema
+      if (schema.optionalFields) {
+        for (const fieldName of ['photos', 'certifications', 'hobbies', 'references']) {
+          const fieldConfig = (schema.optionalFields as any)[fieldName];
+          if (fieldConfig && fieldConfig.enabled && fieldConfig.required && !data[fieldName]) {
+            errors[fieldName] = `${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} is required for this locale.`;
+          }
+        }
+      }
+
       return errors;
     };
 

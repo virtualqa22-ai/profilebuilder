@@ -8,7 +8,99 @@ interface ResumeBuilderProps {
 }
 
 const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
-  const { resume, updatePersonalInfo, updateSummary, addWorkExperience, updateWorkExperience, removeWorkExperience, addEducation, updateEducation, removeEducation, updateSkills, updateProjects, updateAwardsCertifications, updateLocale, updateVersion } = useResumeStore();
+  const { resume, updatePersonalInfo, updateSummary, addWorkExperience, updateWorkExperience, removeWorkExperience, addEducation, updateEducation, removeEducation, updateSkills, updateProjects, updateAwardsCertifications, updateLocale, updateVersion, setResume } = useResumeStore();
+  // Handle optional fields (photos, certifications, hobbies, references)
+  // Handle file upload for photos and certifications
+  const handleOptionalFileUpload = async (field: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResume({ ...resume, [field]: data.url });
+      } else {
+        alert(data.error || 'Upload failed');
+      }
+    } catch (e) {
+      alert('Upload failed');
+    }
+  };
+
+  const handleOptionalFieldChange = (field: string, value: string) => {
+    setResume({
+      ...resume,
+      [field]: value,
+    });
+  };
+  // Render optional fields UI if enabled in locale
+  const renderOptionalFields = () => {
+    if (!selectedLocaleData?.optionalFields) return null;
+    const fields = [
+      { key: 'photos', label: 'Photos', type: 'file' },
+      { key: 'certifications', label: 'Certifications', type: 'file' },
+      { key: 'hobbies', label: 'Hobbies', type: 'text' },
+      { key: 'references', label: 'References', type: 'text' },
+    ];
+    return (
+      <section className="mb-6">
+        <h3 className="text-xl font-semibold mb-3">Optional Fields</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {fields.map(({ key, label, type }) => {
+            const config = selectedLocaleData.optionalFields?.[key];
+            if (!config?.enabled) return null;
+            return (
+              <div key={key}>
+                <label htmlFor={key} className="block text-sm font-medium text-gray-700 mb-1">
+                  {label}
+                  {config.required && <span className="text-red-500 ml-1">*</span>}
+                </label>
+                {type === 'file' ? (
+                  <>
+                    <input
+                      id={key}
+                      type="file"
+                      name={key}
+                      accept={key === 'photos' ? 'image/*' : '*'}
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) handleOptionalFileUpload(key, file);
+                      }}
+                      className="p-2 border rounded text-black w-full focus:ring-2"
+                      required={!!config.required && !(resume as any)[key]}
+                    />
+                    {(resume as any)[key] && (
+                      <div className="mt-2">
+                        {key === 'photos' ? (
+                          <img src={(resume as any)[key]} alt="Uploaded" className="max-h-32" />
+                        ) : (
+                          <a href={(resume as any)[key]} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">View Uploaded</a>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <input
+                    id={key}
+                    type={type}
+                    name={key}
+                    placeholder={`Enter ${label.toLowerCase()}`}
+                    value={(resume as any)[key] || ''}
+                    onChange={e => handleOptionalFieldChange(key, e.target.value)}
+                    className={`p-2 border rounded text-black w-full focus:ring-2`}
+                    required={!!config.required}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    );
+  };
   const [message, setMessage] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [showComments, setShowComments] = useState<Record<string, boolean>>({});
@@ -268,6 +360,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
     return <div>Loading locale data...</div>;
   }
 
+
   return (
     <div className="p-4 border rounded-lg shadow-md bg-white text-black">
       <h2 className="text-2xl font-bold mb-4">Resume Builder</h2>
@@ -366,6 +459,9 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
           )}
         </section>
       ))}
+
+      {/* Optional Fields Section */}
+      {renderOptionalFields()}
 
       {/* Work Experience Section */}
       <section className="mb-6">

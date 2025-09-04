@@ -55,5 +55,23 @@
       "label": "Awards and Certifications",
       "placeholder": "List your awards and certifications."
     }
+  },
+  "optionalFields": {
+    "photos": {
+      "enabled": true,
+      "required": false
+    },
+    "certifications": {
+      "enabled": true,
+      "required": false
+    },
+    "hobbies": {
+      "enabled": true,
+      "required": false
+    },
+    "references": {
+      "enabled": true,
+      "required": false
+    }
   }
 }

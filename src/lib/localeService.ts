@@ -24,6 +24,24 @@ export interface ILocale {
       order?: string[];
     };
   };
+  optionalFields?: { // New property for optional fields
+    photos?: {
+      enabled: boolean;
+      required?: boolean; // Optional: if it can be required based on locale
+    };
+    certifications?: {
+      enabled: boolean;
+      required?: boolean;
+    };
+    hobbies?: {
+      enabled: boolean;
+      required?: boolean;
+    };
+    references?: {
+      enabled: boolean;
+      required?: boolean;
+    };
+  };
 }
 
 const locales: { [key: string]: ILocale } = {
