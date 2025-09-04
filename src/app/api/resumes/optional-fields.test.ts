@@ -76,7 +76,7 @@ describe('Resume API POST - Optional Fields Validation', () => {
     });
 
     await testApiHandler({
-  appHandler: POST,
+      appHandler: { POST },
       test: async ({ fetch }) => {
         const response = await fetch({
           method: 'POST',
@@ -96,6 +96,7 @@ describe('Resume API POST - Optional Fields Validation', () => {
           title: 'Test Resume',
           content: 'Test Content',
           locale: 'en-US',
+          personalInfo: { name: 'Test User' },
         }));
       },
     });
@@ -114,7 +115,7 @@ describe('Resume API POST - Optional Fields Validation', () => {
     });
 
     await testApiHandler({
-  appHandler: POST,
+      appHandler: { POST },
       test: async ({ fetch }) => {
         const response = await fetch({
           method: 'POST',
@@ -142,6 +143,7 @@ describe('Resume API POST - Optional Fields Validation', () => {
           certifications: 'cert_details',
           hobbies: 'hobby_details',
           references: 'ref_details',
+          personalInfo: { name: 'Test User' },
         }));
       },
     });
@@ -151,7 +153,7 @@ describe('Resume API POST - Optional Fields Validation', () => {
     jest.spyOn(Resume, 'create'); // Spy on create to ensure it's not called
 
     await testApiHandler({
-  appHandler: POST,
+      appHandler: { POST },
       test: async ({ fetch }) => {
         const response = await fetch({
           method: 'POST',
@@ -191,7 +193,7 @@ describe('Resume API POST - Optional Fields Validation', () => {
     });
 
     await testApiHandler({
-  appHandler: POST,
+      appHandler: { POST },
       test: async ({ fetch }) => {
         const response = await fetch({
           method: 'POST',
@@ -219,6 +221,7 @@ describe('Resume API POST - Optional Fields Validation', () => {
           certifications: 'cert_details',
           hobbies: 'hobby_details',
           references: 'ref_details',
+          personalInfo: { name: 'Test User' },
         }));
       },
     });

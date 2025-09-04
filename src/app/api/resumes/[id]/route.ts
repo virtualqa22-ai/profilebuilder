@@ -1,8 +1,19 @@
+
 import dbConnect from '@/lib/dbConnect';
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import '@/models/Resume'; // Ensure the model is loaded
 import { getLocaleByCode, ILocale } from '@/lib/localeService';
+
+
+function setSecurityHeaders(res: NextResponse) {
+  res.headers.set('X-Content-Type-Options', 'nosniff');
+  res.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  res.headers.set('X-XSS-Protection', '1; mode=block');
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.headers.set('Permissions-Policy', 'geolocation=(), microphone=()');
+  res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+}
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   await dbConnect();
@@ -11,11 +22,17 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   try {
     const resume = await Resume.findById(id);
     if (!resume) {
-      return NextResponse.json({ success: false, error: 'Resume not found' }, { status: 404 });
+      const res = NextResponse.json({ success: false, error: 'Resume not found' }, { status: 404 });
+      setSecurityHeaders(res);
+      return res;
     }
-    return NextResponse.json({ success: true, data: resume });
+    const res = NextResponse.json({ success: true, data: resume });
+    setSecurityHeaders(res);
+    return res;
   } catch (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    const res = NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    setSecurityHeaders(res);
+    return res;
   }
 }
 
@@ -39,7 +56,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     const selectedLocaleData = getLocaleByCode(locale);
     if (!selectedLocaleData) {
-      return NextResponse.json({ success: false, error: 'Invalid locale provided' }, { status: 400 });
+      const res = NextResponse.json({ success: false, error: 'Invalid locale provided' }, { status: 400 });
+      setSecurityHeaders(res);
+      return res;
     }
 
     const validateResumeData = (data: any, schema: ILocale) => {
@@ -94,7 +113,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const validationErrors = validateResumeData(resumeData, selectedLocaleData);
 
     if (Object.keys(validationErrors).length > 0) {
-      return NextResponse.json({ success: false, errors: validationErrors }, { status: 400 });
+      const res = NextResponse.json({ success: false, errors: validationErrors }, { status: 400 });
+      setSecurityHeaders(res);
+      return res;
     }
 
     const resume = await Resume.findByIdAndUpdate(
@@ -106,11 +127,17 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       }
     );
     if (!resume) {
-      return NextResponse.json({ success: false, error: 'Resume not found' }, { status: 404 });
+      const res = NextResponse.json({ success: false, error: 'Resume not found' }, { status: 404 });
+      setSecurityHeaders(res);
+      return res;
     }
-    return NextResponse.json({ success: true, data: resume });
+    const res = NextResponse.json({ success: true, data: resume });
+    setSecurityHeaders(res);
+    return res;
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    const res = NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    setSecurityHeaders(res);
+    return res;
   }
 }
 
@@ -121,10 +148,16 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   try {
     const deletedResume = await Resume.deleteOne({ _id: id });
     if (!deletedResume.deletedCount) {
-      return NextResponse.json({ success: false, error: 'Resume not found' }, { status: 404 });
+      const res = NextResponse.json({ success: false, error: 'Resume not found' }, { status: 404 });
+      setSecurityHeaders(res);
+      return res;
     }
-    return NextResponse.json({ success: true, data: {} }, { status: 200 });
+    const res = NextResponse.json({ success: true, data: {} }, { status: 200 });
+    setSecurityHeaders(res);
+    return res;
   } catch (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    const res = NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    setSecurityHeaders(res);
+    return res;
   }
 }

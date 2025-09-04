@@ -1,26 +1,38 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import * as pdfjs from 'pdfjs-dist/build/pdf.mjs';
-
-// Configure pdfjs-dist for Node.js environment
-pdfjs.GlobalWorkerOptions.workerSrc = undefined; // No separate worker file needed
-
 import { parseResume } from '@/lib/resumeParser';
 import { getLocaleByCode } from '@/lib/localeService';
+
+function setSecurityHeaders(res: NextResponse) {
+  res.headers.set('X-Content-Type-Options', 'nosniff');
+  res.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  res.headers.set('X-XSS-Protection', '1; mode=block');
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.headers.set('Permissions-Policy', 'geolocation=(), microphone=()');
+  res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+}
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const file = formData.get('file') as File;
 
   if (!file) {
-    return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+    const res = NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+    setSecurityHeaders(res);
+    return res;
   }
 
   if (file.type !== 'application/pdf') {
-    return NextResponse.json({ error: 'Only PDF files are allowed' }, { status: 400 });
+    const res = NextResponse.json({ error: 'Only PDF files are allowed' }, { status: 400 });
+    setSecurityHeaders(res);
+    return res;
   }
 
   if (file.size === 0) {
-    return NextResponse.json({ error: 'Uploaded file is empty' }, { status: 400 });
+    const res = NextResponse.json({ error: 'Uploaded file is empty' }, { status: 400 });
+    setSecurityHeaders(res);
+    return res;
   }
 
   const arrayBuffer = await file.arrayBuffer();
@@ -39,12 +51,18 @@ export async function POST(req: NextRequest) {
 
     const locale = getLocaleByCode('en-US'); // Hardcoded for now
     if (!locale) {
-      return NextResponse.json({ error: 'Default locale not found' }, { status: 500 });
+      const res = NextResponse.json({ error: 'Default locale not found' }, { status: 500 });
+      setSecurityHeaders(res);
+      return res;
     }
     const resumeData = parseResume(fullText, locale);
-    return NextResponse.json(resumeData);
+    const res = NextResponse.json(resumeData);
+    setSecurityHeaders(res);
+    return res;
   } catch (error: any) {
     console.error('Error processing PDF or parsing resume:', error);
-    return NextResponse.json({ error: 'Failed to process PDF or parse resume', details: error.message }, { status: 500 });
+    const res = NextResponse.json({ error: 'Failed to process PDF or parse resume', details: error.message }, { status: 500 });
+    setSecurityHeaders(res);
+    return res;
   }
 }

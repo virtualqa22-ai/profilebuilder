@@ -1,4 +1,13 @@
 import { NextResponse } from 'next/server';
+
+function setSecurityHeaders(res: NextResponse) {
+  res.headers.set('X-Content-Type-Options', 'nosniff');
+  res.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  res.headers.set('X-XSS-Protection', '1; mode=block');
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.headers.set('Permissions-Policy', 'geolocation=(), microphone=()');
+  res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+}
 import puppeteer from 'puppeteer';
 // import { renderToStaticMarkup } from 'react-dom/server';
 // import ResumeTemplate from '@/features/resume/components/ResumeTemplate';
@@ -7,8 +16,7 @@ import puppeteer from 'puppeteer';
 export async function POST(req: Request) {
   try {
     const resumeData = await req.json();
-
-    // Reverting to a simple HTML string for testing
+    // ...existing code...
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -84,13 +92,17 @@ export async function POST(req: Request) {
     const pdfBlob = new Blob([Buffer.from(pdfBuffer).buffer], { type: 'application/pdf' });
     await browser.close();
 
-    return new NextResponse(pdfBlob, {
+    const response = new NextResponse(pdfBlob, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="resume_v${resumeData.version}.pdf"`,
       },
     });
+    setSecurityHeaders(response);
+    return response;
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    const errorResponse = NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    setSecurityHeaders(errorResponse);
+    return errorResponse;
   }
 }

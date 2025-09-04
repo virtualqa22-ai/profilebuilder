@@ -4,14 +4,27 @@ import mongoose from 'mongoose';
 import '@/models/Resume'; // Ensure the model is loaded
 import { getLocaleByCode, ILocale } from '@/lib/localeService';
 
+function setSecurityHeaders(res: NextResponse) {
+  res.headers.set('X-Content-Type-Options', 'nosniff');
+  res.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  res.headers.set('X-XSS-Protection', '1; mode=block');
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.headers.set('Permissions-Policy', 'geolocation=(), microphone=()');
+  res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+}
+
 export async function GET() {
   await dbConnect();
   const Resume = mongoose.model('Resume');
   try {
     const resumes = await Resume.find({});
-    return NextResponse.json({ success: true, data: resumes });
+    const res = NextResponse.json({ success: true, data: resumes });
+    setSecurityHeaders(res);
+    return res;
   } catch (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    const res = NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    setSecurityHeaders(res);
+    return res;
   }
 }
 
@@ -20,11 +33,13 @@ export async function POST(req: Request) {
   const Resume = mongoose.model('Resume');
   try {
     const body = await req.json();
-    const { locale = 'en-US', ...resumeData } = body; // Extract locale, default to en-US
+  const { locale = 'en-US', ...resumeData } = body; // Extract locale, default to en-US
 
     const selectedLocaleData = getLocaleByCode(locale);
     if (!selectedLocaleData) {
-      return NextResponse.json({ success: false, error: 'Invalid locale provided' }, { status: 400 });
+      const res = NextResponse.json({ success: false, error: 'Invalid locale provided' }, { status: 400 });
+      setSecurityHeaders(res);
+      return res;
     }
 
     const validateResumeData = (data: any, schema: ILocale) => {
@@ -89,12 +104,18 @@ export async function POST(req: Request) {
     const validationErrors = validateResumeData(resumeData, selectedLocaleData);
 
     if (Object.keys(validationErrors).length > 0) {
-      return NextResponse.json({ success: false, errors: validationErrors }, { status: 400 });
+      const res = NextResponse.json({ success: false, errors: validationErrors }, { status: 400 });
+      setSecurityHeaders(res);
+      return res;
     }
 
-    const resume = await Resume.create(resumeData);
-    return NextResponse.json({ success: true, data: resume }, { status: 201 });
+  const resume = await Resume.create({ ...resumeData, locale });
+    const res = NextResponse.json({ success: true, data: resume }, { status: 201 });
+    setSecurityHeaders(res);
+    return res;
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    const res = NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    setSecurityHeaders(res);
+    return res;
   }
 }

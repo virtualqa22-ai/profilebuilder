@@ -39,6 +39,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
   // Render optional fields UI if enabled in locale
   const renderOptionalFields = () => {
     if (!selectedLocaleData?.optionalFields) return null;
+    const [photoPrivacy, setPhotoPrivacy] = useState(true);
     const fields = [
       { key: 'photos', label: 'Photos', type: 'file' },
       { key: 'certifications', label: 'Certifications', type: 'file' },
@@ -48,10 +49,22 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
     return (
       <section className="mb-6">
         <h3 className="text-xl font-semibold mb-3">Optional Fields</h3>
+        <div className="mb-4">
+          <label className="inline-flex items-center">
+            <input
+              type="checkbox"
+              checked={photoPrivacy}
+              onChange={() => setPhotoPrivacy(!photoPrivacy)}
+              className="mr-2"
+            />
+            Show photo in resume (privacy toggle)
+          </label>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {fields.map(({ key, label, type }) => {
             const config = selectedLocaleData.optionalFields?.[key];
             if (!config?.enabled) return null;
+            if (key === 'photos' && !photoPrivacy) return null;
             return (
               <div key={key}>
                 <label htmlFor={key} className="block text-sm font-medium text-gray-700 mb-1">
