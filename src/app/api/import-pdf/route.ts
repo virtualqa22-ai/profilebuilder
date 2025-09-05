@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import * as pdfjs from 'pdfjs-dist/build/pdf.mjs';
+// pdfjs-dist imports can reference DOM globals at module-evaluation time.
+// Dynamically import inside the request handler to avoid build-time errors (DOMMatrix undefined).
 import { parseResume } from '@/lib/resumeParser';
 import { getLocaleByCode } from '@/lib/localeService';
 
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
   const uint8Array = new Uint8Array(arrayBuffer);
 
   try {
+    const pdfjs = await import('pdfjs-dist/build/pdf.mjs');
     const loadingTask = pdfjs.getDocument({ data: uint8Array }); // Pass data as an object
     const pdfDocument = await loadingTask.promise;
     let fullText = '';
