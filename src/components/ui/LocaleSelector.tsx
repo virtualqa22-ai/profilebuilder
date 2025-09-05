@@ -24,7 +24,9 @@ export default function LocaleSelector() {
 
   return (
     <div className="my-4 inline-block bg-white p-2 rounded-md shadow-sm">
+      <label htmlFor="locale-selector" className="mr-2 font-medium text-gray-700">Select Locale:</label>
       <ReactFlagsSelect
+        id="locale-selector"
         countries={countryCodes}
         onSelect={onSelect}
         selected={locale.split('-')[1] || countryCodes[0]}

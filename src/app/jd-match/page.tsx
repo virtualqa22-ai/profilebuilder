@@ -41,19 +41,19 @@ const JdMatchPage = () => {
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Job Description Match</h1>
+    <div className="container mx-auto p-4 bg-brand-light-gray">
+      <h1 className="text-2xl font-bold mb-4 text-brand-dark-charcoal">Job Description Match</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <h2 className="text-xl font-semibold mb-2">Paste Job Description</h2>
+          <h2 className="text-xl font-semibold mb-2 text-brand-dark-charcoal">Paste Job Description</h2>
           <textarea
-            className="w-full h-64 p-2 border rounded"
+            className="w-full h-64 p-2 border rounded bg-brand-ivory"
             placeholder="Paste the job description here..."
             value={jdText}
             onChange={(e) => setJdText(e.target.value)}
           ></textarea>
           <button
-            className="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            className="mt-2 bg-brand-blue hover:bg-brand-teal text-white font-bold py-2 px-4 rounded"
             onClick={handleAnalyze}
             disabled={isLoading}
           >
@@ -61,15 +61,15 @@ const JdMatchPage = () => {
           </button>
         </div>
         <div>
-          <h2 className="text-xl font-semibold mb-2">Analysis Results</h2>
-          <div className="p-4 border rounded bg-gray-100">
-            <h3 className="text-lg font-semibold">Keyword Coverage</h3>
+          <h2 className="text-xl font-semibold mb-2 text-brand-dark-charcoal">Analysis Results</h2>
+          <div className="p-4 border rounded bg-brand-ivory">
+            <h3 className="text-lg font-semibold text-brand-dark-charcoal">Keyword Coverage</h3>
             <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-              <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${coverage}%` }}></div>
+              <div className="bg-brand-blue h-2.5 rounded-full" style={{ width: `${coverage}%` }}></div>
             </div>
             <p className="text-sm text-gray-600 mt-1">{coverage.toFixed(2)}% Match</p>
 
-            <h3 className="text-lg font-semibold mt-4">Missing Keywords</h3>
+            <h3 className="text-lg font-semibold mt-4 text-brand-dark-charcoal">Missing Keywords</h3>
             {missingKeywords.length > 0 ? (
               <ul data-testid="missing-keywords">
                 {missingKeywords.map((keyword, index) => (
@@ -82,7 +82,7 @@ const JdMatchPage = () => {
               <p>No missing keywords found.</p>
             )}
 
-            <h3 className="text-lg font-semibold mt-4">Extracted Keywords</h3>
+            <h3 className="text-lg font-semibold mt-4 text-brand-dark-charcoal">Extracted Keywords</h3>
             {keywords.length > 0 ? (
               <ul>
                 {keywords.map((keyword, index) => (

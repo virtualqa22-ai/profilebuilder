@@ -58,8 +58,8 @@ export default function SignInPage() {
   const s = t?.signin || null;
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-      <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
+    <main className="flex flex-col items-center justify-center min-h-screen bg-brand-light-gray">
+      <div className="bg-brand-ivory p-8 rounded shadow-md w-full max-w-md">
         <h1 className="text-2xl font-bold mb-6 text-center">{s?.title || 'Sign in to CareerVerve'}</h1>
         {message && <div className="mb-4 text-center text-brand-coral">{message}</div>}
         {showRegister ? (
@@ -68,14 +68,14 @@ export default function SignInPage() {
             <input name="email" type="email" placeholder="Email" className="w-full p-2 border rounded" value={form.email} onChange={handleInput} required />
             <input name="password" type="password" placeholder="Password" className="w-full p-2 border rounded" value={form.password} onChange={handleInput} required />
             <button type="submit" className="w-full py-2 px-4 rounded bg-brand-blue text-white font-semibold hover:bg-brand-teal transition">{s?.register || 'Register'}</button>
-            <button type="button" className="w-full py-2 px-4 rounded bg-brand-light text-brand-charcoal mt-2" onClick={() => setShowRegister(false)}>{s?.back || 'Back to Sign In'}</button>
+            <button type="button" className="w-full py-2 px-4 rounded bg-brand-light-gray text-brand-dark-charcoal mt-2" onClick={() => setShowRegister(false)}>{s?.back || 'Back to Sign In'}</button>
           </form>
         ) : showForgot ? (
           <form onSubmit={handleForgot} className="mb-4 space-y-4">
             <input name="email" type="email" placeholder="Email" className="w-full p-2 border rounded" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} required />
             <input name="newPassword" type="password" placeholder="New Password" className="w-full p-2 border rounded" value={forgotPassword} onChange={e => setForgotPassword(e.target.value)} required />
             <button type="submit" className="w-full py-2 px-4 rounded bg-brand-blue text-white font-semibold hover:bg-brand-teal transition">{s?.resetPassword || 'Reset Password'}</button>
-            <button type="button" className="w-full py-2 px-4 rounded bg-brand-light text-brand-charcoal mt-2" onClick={() => setShowForgot(false)}>{s?.back || 'Back to Sign In'}</button>
+            <button type="button" className="w-full py-2 px-4 rounded bg-brand-light-gray text-brand-dark-charcoal mt-2" onClick={() => setShowForgot(false)}>{s?.back || 'Back to Sign In'}</button>
           </form>
         ) : (
           <>
@@ -85,14 +85,14 @@ export default function SignInPage() {
               <button type="submit" className="w-full py-2 px-4 rounded bg-brand-blue text-white font-semibold hover:bg-brand-teal transition">{s?.signIn || 'Sign In'}</button>
             </form>
             <div className="flex flex-col gap-2 mb-4">
-              <button className="w-full py-2 px-4 rounded bg-brand-light text-brand-charcoal" onClick={() => setShowRegister(true)}>Create an account</button>
-              <button className="w-full py-2 px-4 rounded bg-brand-light text-brand-charcoal" onClick={() => setShowForgot(true)}>Forgot password?</button>
+              <button className="w-full py-2 px-4 rounded bg-brand-light-gray text-brand-dark-charcoal" onClick={() => setShowRegister(true)}>Create an account</button>
+              <button className="w-full py-2 px-4 rounded bg-brand-light-gray text-brand-dark-charcoal" onClick={() => setShowForgot(true)}>Forgot password?</button>
             </div>
     <div className="mb-4 text-center text-gray-400">{s?.or || 'or'}</div>
             {providers && Object.values(providers).filter((p: any) => p.id !== 'credentials').map((provider: any) => (
               <div key={provider.name} className="mb-4">
                 <button
-                  className="w-full py-2 px-4 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+                  className="w-full py-2 px-4 rounded bg-brand-blue text-white font-semibold hover:bg-brand-teal transition"
                   onClick={() => signIn(provider.id)}
                 >
       {s?.signInWith || 'Sign in with'} {provider.name}
