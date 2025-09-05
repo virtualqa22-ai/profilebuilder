@@ -1,13 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useResumeStore } from '@/store/resumeStore';
 import { getLocaleByCode, ILocale } from '@/lib/localeService';
+import { useLocale } from '@/lib/locale';
 import Comment from './Comment';
+import LocaleSelector from '@/components/ui/LocaleSelector';
 
 interface ResumeBuilderProps {
   locale: string;
 }
 
 const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
+  // prefer context locale when present
+  let contextLocale = undefined;
+  try {
+    contextLocale = (useLocale() as any).locale;
+  } catch (e) {
+    contextLocale = undefined;
+  }
+  const effectiveLocale = locale || contextLocale || 'en-US';
   const { resume, updatePersonalInfo, updateSummary, addWorkExperience, updateWorkExperience, removeWorkExperience, addEducation, updateEducation, removeEducation, updateSkills, updateProjects, updateAwardsCertifications, updateLocale, updateVersion, setResume } = useResumeStore();
   // Handle optional fields (photos, certifications, hobbies, references)
   // Handle file upload for photos and certifications
@@ -121,7 +131,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
   const [showOptionalFields, setShowOptionalFields] = useState<Record<string, boolean>>({});
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  const selectedLocaleData = getLocaleByCode(locale);
+  const selectedLocaleData = getLocaleByCode(effectiveLocale);
 
   useEffect(() => {
     updateLocale(locale);
@@ -376,6 +386,9 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
 
   return (
     <div className="p-4 border rounded-lg shadow-md bg-white text-black">
+      <div className="mb-4">
+        <LocaleSelector />
+      </div>
       <h2 className="text-2xl font-bold mb-4">Resume Builder</h2>
       <div className="text-right text-sm mb-2" aria-live="polite">
         {saveStatus === 'saving' && <span className="text-yellow-600">Saving...</span>}

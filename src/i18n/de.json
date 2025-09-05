@@ -1,0 +1,32 @@
+{
+  "header": {
+    "brand": "CareerVerve",
+    "resumes": "Lebenslauf-Generator",
+    "jdMatch": "JD-Übereinstimmung",
+    "signIn": "Anmelden"
+  },
+  "home": {
+    "title": "CareerVerve",
+    "subtitle": "Globale Karrieren, lokale Wirkung — Erstellen Sie ATS-freundliche Lebensläufe und vergleichen Sie mit echten Jobs.",
+    "createResume": "Lebenslauf erstellen",
+    "checkJD": "JD-Übereinstimmung prüfen",
+    "howItWorksTitle": "So funktioniert's",
+    "steps": [
+      { "title": "1. Erstellen", "desc": "Geführter Lebenslauf-Generator mit Ländervoreinstellungen und ATS-sicheren Vorlagen." },
+      { "title": "2. Vorschau", "desc": "Live-Vorschau und PDF-Export, optimiert für ATS-Systeme." },
+      { "title": "3. Übereinstimmen", "desc": "Fügen Sie Jobbeschreibungen ein und erhalten Sie Schlagwortvorschläge." }
+    ]
+  },
+  "signin": {
+    "title": "Bei CareerVerve anmelden",
+    "choose": "Wählen Sie einen Anbieter zum Anmelden oder melden Sie sich per E-Mail an.",
+    "signIn": "Anmelden",
+    "back": "Zurück zur Startseite",
+    "register": "Registrieren",
+    "resetPassword": "Passwort zurücksetzen",
+    "createAccount": "Konto erstellen",
+    "forgotPassword": "Passwort vergessen?",
+    "or": "oder",
+    "signInWith": "Anmelden mit"
+  }
+}

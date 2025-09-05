@@ -1,0 +1,32 @@
+{
+  "header": {
+    "brand": "CareerVerve",
+    "resumes": "履歴書ビルダー",
+    "jdMatch": "JDマッチ",
+    "signIn": "サインイン"
+  },
+  "home": {
+    "title": "CareerVerve",
+    "subtitle": "グローバルなキャリア、ローカルな影響 — ATSに対応した履歴書を作成し、実際の求人とマッチさせます。",
+    "createResume": "履歴書を作成",
+    "checkJD": "JDマッチを確認",
+    "howItWorksTitle": "使い方",
+    "steps": [
+      { "title": "1. 作成", "desc": "ロケールのプリセットとATSに対応したテンプレートを備えたガイド付き履歴書ビルダー。" },
+      { "title": "2. プレビュー", "desc": "ライブプレビューとATSシステム向けに最適化されたPDFエクスポート。" },
+      { "title": "3. マッチ", "desc": "職務記述を貼り付けてキーワードカバレッジの提案を受ける。" }
+    ]
+  },
+  "signin": {
+    "title": "CareerVerveにサインイン",
+    "choose": "サインインするプロバイダを選択するか、メールで続行してください。",
+    "signIn": "サインイン",
+    "back": "ホームに戻る",
+    "register": "登録",
+    "resetPassword": "パスワードをリセット",
+    "createAccount": "アカウントを作成",
+    "forgotPassword": "パスワードをお忘れですか？",
+    "or": "または",
+    "signInWith": "でサインイン"
+  }
+}

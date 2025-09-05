@@ -1,9 +1,10 @@
-'use client';
+ 'use client';
 
 import ResumeBuilder from '@/features/resume/components/ResumeBuilder';
 import LivePreview from '@/features/resume/components/LivePreview';
 import { useState, useEffect } from 'react';
 import LocaleSelector from '@/components/ui/LocaleSelector';
+import { useLocale } from '@/lib/locale';
 
 interface Resume {
   _id: string;
@@ -15,7 +16,7 @@ interface Resume {
 export default function ResumesPage() {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [message, setMessage] = useState('');
-  const [selectedLocale, setSelectedLocale] = useState('en-US'); // New state for selected locale
+  const { locale: selectedLocale } = useLocale();
 
   useEffect(() => {
     fetchResumes();
@@ -59,7 +60,7 @@ export default function ResumesPage() {
 
       <div className="flex w-full max-w-7xl gap-8">
         <div className="flex-1">
-          <LocaleSelector onLocaleChange={setSelectedLocale} /> {/* Add LocaleSelector */}
+          <LocaleSelector /> {/* Add LocaleSelector */}
           <ResumeBuilder locale={selectedLocale} /> {/* Pass selectedLocale to ResumeBuilder */}
           {message && <p className="mt-4 text-center text-red-500">{message}</p>}
         </div>

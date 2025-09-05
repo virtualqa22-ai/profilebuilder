@@ -1,0 +1,32 @@
+{
+  "header": {
+    "brand": "CareerVerve",
+    "resumes": "Resume Builder",
+    "jdMatch": "JD Match",
+    "signIn": "Sign In"
+  },
+  "home": {
+    "title": "CareerVerve",
+    "subtitle": "Global careers, local impact — build ATS-friendly resumes and match to real jobs.",
+    "createResume": "Create Resume",
+    "checkJD": "Check JD Match",
+    "howItWorksTitle": "How it works",
+    "steps": [
+      { "title": "1. Create", "desc": "Guided resume builder with locale presets and ATS-safe templates." },
+      { "title": "2. Preview", "desc": "Live preview and export to PDF optimized for ATS systems." },
+      { "title": "3. Match", "desc": "Paste job descriptions and get keyword coverage suggestions." }
+    ]
+  },
+  "signin": {
+    "title": "Sign in to CareerVerve",
+    "choose": "Choose a provider to sign in or continue with email.",
+    "signIn": "Sign in",
+    "back": "Back to home",
+    "register": "Register",
+    "resetPassword": "Reset Password",
+    "createAccount": "Create an account",
+    "forgotPassword": "Forgot password?",
+    "or": "or",
+    "signInWith": "Sign in with"
+  }
+}
