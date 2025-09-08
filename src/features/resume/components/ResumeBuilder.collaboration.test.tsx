@@ -1,8 +1,8 @@
-/// <reference types="jest" />
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import ResumeBuilder from './ResumeBuilder';
 import { useResumeStore } from '@/store/resumeStore';
+import { LocaleProvider } from '@/lib/locale';
 
 // Mock the resume store
 jest.mock('@/store/resumeStore');
@@ -31,7 +31,11 @@ describe('ResumeBuilder Collaboration', () => {
   });
 
   it('should be able to add a comment to a field', async () => {
-    render(<ResumeBuilder locale="en-US" />);
+    render(
+      <LocaleProvider>
+        <ResumeBuilder locale="en-US" />
+      </LocaleProvider>
+    );
 
     const commentButton = screen.getAllByRole('button', { name: /comment/i })[0];
     fireEvent.click(commentButton);

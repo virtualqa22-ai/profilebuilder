@@ -10,7 +10,7 @@ import { useSession, signOut } from "next-auth/react";
 export default function Header() {
   const { t } = useLanguage();
   const { data: session } = useSession();
-  const header = t?.header || { brand: 'CareerVerve', resumes: 'Resume Builder', jdMatch: 'JD Match', signIn: 'Sign In', signOut: 'Sign Out' };
+  const header = t?.header || { brand: 'CareerVerve', resumes: 'Resume Builder', jdMatch: 'JD Match', coverLetter: 'Cover Letter Builder', signIn: 'Sign In', signOut: 'Sign Out' };
 
   return (
     <header className="bg-brand-blue text-white sticky top-0 z-40 shadow-sm" role="banner" aria-label="Main header">
@@ -22,6 +22,7 @@ export default function Header() {
         <nav className="flex items-center gap-4" role="navigation" aria-label="Main navigation">
           <Link href="/resumes" className="hover:underline" aria-label={header.resumes}>{header.resumes}</Link>
           <Link href="/jd-match" className="hover:underline" aria-label={header.jdMatch}>{header.jdMatch}</Link>
+          <Link href="/cover-letter" className="hover:underline" aria-label={header.coverLetter}>{header.coverLetter}</Link>
           {session ? (
             <>
               <Link href="/profile" className="hover:underline">{session.user?.name}</Link>
