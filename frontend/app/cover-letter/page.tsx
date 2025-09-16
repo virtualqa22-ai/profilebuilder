@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import Classic from '@/features/cover-letter/templates/Classic';
+import Classic from '../../features/cover-letter/templates/Classic';
 
 const CoverLetterBuilderPage = () => {
   const [name, setName] = useState('John Doe');

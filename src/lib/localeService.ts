@@ -1,10 +1,10 @@
-import enUS from '@/locales/en-US.json';
-import enGB from '@/locales/en-GB.json';
-import jaJP from '@/locales/ja-JP.json';
-import enIN from '@/locales/en-IN.json';
-import enCA from '@/locales/en-CA.json';
-import arAE from '@/locales/ar-AE.json';
-import enAU from '@/locales/en-AU.json';
+import enUS from '../locales/en-US.json';
+import enGB from '../locales/en-GB.json';
+import jaJP from '../locales/ja-JP.json';
+import enIN from '../locales/en-IN.json';
+import enCA from '../locales/en-CA.json';
+import arAE from '../locales/ar-AE.json';
+import enAU from '../locales/en-AU.json';
 
 export interface ILocale {
   locale: string;

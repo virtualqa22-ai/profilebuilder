@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useResumeStore } from '@/store/resumeStore';
-import { getLocaleByCode, ILocale } from '@/lib/localeService';
-import { useLocale } from '@/lib/locale';
+import { useResumeStore } from '../../../../src/store/resumeStore';
+import { getLocaleByCode, ILocale } from '../../../../src/lib/localeService';
+import { useLocale } from '../../../../src/lib/locale';
 import Comment from './Comment';
-import LocaleSelector from '@/components/ui/LocaleSelector';
+import LocaleSelector from '../../../../frontend/components/ui/LocaleSelector';
 
 interface ResumeBuilderProps {
   locale: string;
