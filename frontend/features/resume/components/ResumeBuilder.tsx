@@ -640,7 +640,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
       </section>
 
       <div className="mt-6 text-center">
-        <input type="file" id="pdf-upload" style={{ display: 'none' }} onChange={handlePdfUpload} aria-hidden="true" />
+        <input type="file" id="pdf-upload" className="hidden" onChange={handlePdfUpload} aria-hidden="true" />
         <button
           onClick={() => document.getElementById('pdf-upload')!.click()}
           className="p-3 bg-blue-600 text-white rounded-lg text-lg font-semibold mr-4 focus:ring-2 focus:ring-blue-600"

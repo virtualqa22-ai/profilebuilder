@@ -1,7 +1,11 @@
 import mongoose from 'mongoose';
 import CryptoJS from 'crypto-js';
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default-key-change-in-prod';
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+
+if (!ENCRYPTION_KEY) {
+  throw new Error('ENCRYPTION_KEY environment variable is required');
+}
 
 const encrypt = (text: string) => {
   return CryptoJS.AES.encrypt(text, ENCRYPTION_KEY).toString();

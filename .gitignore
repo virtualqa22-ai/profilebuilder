@@ -20,3 +20,14 @@ out/
 # Misc
 *.log
 .pnpm-store/
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.staging
+
+# Secrets and keys
+*.key
+*.pem
+secrets/

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: profilebuilder-service
+  labels:
+    app: profilebuilder
+spec:
+  selector:
+    app: profilebuilder
+  ports:
+  - name: http
+    port: 80
+    targetPort: 3000
+    protocol: TCP
+  type: ClusterIP

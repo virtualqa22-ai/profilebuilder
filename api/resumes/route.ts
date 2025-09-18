@@ -2,7 +2,10 @@ import dbConnect from '../../../backend/dbConnect';
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import '../../../backend/models/Resume'; // Ensure the model is loaded
-import { getLocaleByCode, ILocale } from '../../../src/lib/localeService';
+import { getLocaleByCode, ILocale } from '../../../backend/lib/localeService';
+import { validateResumeData } from '../../../backend/lib/validations';
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../../../backend/lib/messages';
+import { SECURITY_HEADERS, DEFAULT_LOCALE, MAX_TITLE_LENGTH } from '../../../backend/lib/constants';
 
 function setSecurityHeaders(res: NextResponse) {
   res.headers.set('X-Content-Type-Options', 'nosniff');
