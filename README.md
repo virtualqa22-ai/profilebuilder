@@ -53,6 +53,43 @@ npm start
 
 - Run unit and integration tests: `npm test`
 - Run end-to-end tests: `npm run test:e2e`
+### Performance Benchmarking
+
+CareerVerve includes comprehensive performance benchmarking to ensure consistent high performance and detect regressions. See [benchmarks/README.md](benchmarks/README.md) for detailed documentation.
+
+#### Running Benchmarks
+
+```bash
+# API endpoint benchmarks
+npm run test:performance:api
+
+# Database operation benchmarks
+npm run test:performance:db
+
+# Cache performance benchmarks
+npm run test:performance:cache
+
+# Load testing scenarios
+npm run test:load:all
+```
+
+#### Performance SLAs
+
+The application adheres to defined performance SLAs including:
+- API response times (P95 < 1s for most endpoints)
+- Error rates (< 5% for 5xx errors)
+- System availability (99.5% uptime)
+- Resource utilization limits
+
+See [benchmarks/performance-slas.md](benchmarks/performance-slas.md) for complete SLA definitions.
+
+#### Monitoring and Alerting
+
+- **Prometheus**: Metrics collection and alerting
+- **Grafana**: Performance dashboards and visualization
+- **Automated Alerts**: Performance regression detection and SLA violations
+
+Start monitoring stack: `cd monitoring && docker-compose up -d`
 
 ## Architecture Summary
 

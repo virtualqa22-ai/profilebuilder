@@ -23,6 +23,35 @@ export const SECURITY_HEADERS = {
   PERMISSIONS_POLICY: 'geolocation=(), microphone=()',
   HSTS: 'max-age=63072000; includeSubDomains; preload',
 } as const;
+// Security Event Types
+export const SECURITY_EVENT_TYPES = {
+  AUTH_FAILURE: 'authentication_failure',
+  RATE_LIMIT_VIOLATION: 'rate_limit_violation',
+  INPUT_VALIDATION_FAILURE: 'input_validation_failure',
+  AI_SECURITY_EVENT: 'ai_security_event',
+  PRIVACY_COMPLIANCE_ACTION: 'privacy_compliance_action',
+  SUSPICIOUS_ACTIVITY: 'suspicious_activity',
+  ACCESS_DENIED: 'access_denied',
+  SESSION_ANOMALY: 'session_anomaly',
+  ENCRYPTION_ERROR: 'encryption_error',
+  INTEGRITY_CHECK_FAILURE: 'integrity_check_failure',
+} as const;
+
+// Security Event Severity Levels
+export const SECURITY_SEVERITY_LEVELS = {
+  LOW: 'low',
+  MEDIUM: 'medium',
+  HIGH: 'high',
+  CRITICAL: 'critical',
+} as const;
+
+// Security Alert Thresholds
+export const SECURITY_ALERT_THRESHOLDS = {
+  AUTH_FAILURES_PER_MINUTE: 5,
+  RATE_LIMIT_VIOLATIONS_PER_HOUR: 10,
+  INPUT_VALIDATION_FAILURES_PER_MINUTE: 20,
+  SUSPICIOUS_ACTIVITIES_PER_HOUR: 3,
+} as const;
 
 // File Upload Constants
 export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB

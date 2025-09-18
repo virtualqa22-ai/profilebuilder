@@ -4,9 +4,59 @@
  * Contains all validation logic for data integrity and consistency.
  * Reusable across frontend and backend.
  * Includes security enhancements: input sanitization, injection prevention, and comprehensive validation.
+ *
+ * Business Rules:
+ * - Email validation supports international formats with security checks
+ * - Password strength requires 8+ chars with mixed case, numbers, and special chars
+ * - Phone validation supports international formats
+ * - URL validation prevents dangerous schemes (javascript, data, vbscript)
+ * - File uploads limited by type and size for security
+ * - Resume data validation follows locale-specific schemas
+ *
+ * Security Measures:
+ * - XSS detection and prevention with pattern matching
+ * - SQL injection detection for common attack vectors
+ * - Input sanitization removes HTML tags and escapes special characters
+ * - File type validation prevents malicious uploads
+ * - Length limits prevent buffer overflow attacks
+ * - Email security checks prevent spoofing and injection
  */
 
 import { ILocale } from './localeService';
+
+// Type definitions for validation
+
+export interface ValidationResult {
+  [key: string]: string;
+}
+
+export interface ValidationSchema {
+  [key: string]: {
+    maxLength?: number;
+  };
+}
+
+export interface InputData {
+  [key: string]: unknown;
+}
+
+export interface ResumeData {
+  [sectionKey: string]: unknown;
+}
+
+interface ISectionWithOptional {
+  label: string;
+  placeholder?: string;
+  fields?: {
+    [key: string]: {
+      label: string;
+      placeholder: string;
+      optional?: boolean;
+    };
+  };
+  order?: string[];
+  optional?: boolean;
+}
 
 /**
  * Validates resume data against locale schema
@@ -14,7 +64,7 @@ import { ILocale } from './localeService';
  * @param schema - The locale schema to validate against
  * @returns Object containing validation errors
  */
-export const validateResumeData = (data: any, schema: ILocale): Record<string, string> => {
+export const validateResumeData = (data: ResumeData, schema: ILocale): ValidationResult => {
   const errors: Record<string, string> = {};
 
   // Validate sections with fields and order
@@ -29,7 +79,7 @@ export const validateResumeData = (data: any, schema: ILocale): Record<string, s
       });
     } else if (section.placeholder && !section.fields) {
       // For sections like summary, skills, projects, awardsCertifications
-      const isSectionOptional = (schema.sections as any)[sectionKey]?.optional;
+      const isSectionOptional = (schema.sections[sectionKey] as ISectionWithOptional)?.optional;
       if (!isSectionOptional && !data[sectionKey]) {
         errors[sectionKey] = `${section.label} is required.`;
       }
@@ -38,7 +88,7 @@ export const validateResumeData = (data: any, schema: ILocale): Record<string, s
 
   // Validate work experience
   if (data.workExperience) {
-    data.workExperience.forEach((exp: any, index: number) => {
+    (data.workExperience as Array<Record<string, string>>).forEach((exp, index: number) => {
       schema.sections.workExperience.order.forEach((fieldName: string) => {
         const field = schema.sections.workExperience.fields![fieldName];
         const inputId = `workExperience-${index}-${fieldName}`;
@@ -51,7 +101,7 @@ export const validateResumeData = (data: any, schema: ILocale): Record<string, s
 
   // Validate education
   if (data.education) {
-    data.education.forEach((edu: any, index: number) => {
+    (data.education as Array<Record<string, string>>).forEach((edu, index: number) => {
       schema.sections.education.order.forEach((fieldName: string) => {
         const field = schema.sections.education.fields![fieldName];
         const inputId = `education-${index}-${fieldName}`;
@@ -64,8 +114,8 @@ export const validateResumeData = (data: any, schema: ILocale): Record<string, s
 
   // Validate optional fields based on locale schema
   if (schema.optionalFields) {
-    for (const fieldName of ['photos', 'certifications', 'hobbies', 'references']) {
-      const fieldConfig = (schema.optionalFields as any)[fieldName];
+    for (const fieldName of ['photos', 'certifications', 'hobbies', 'references'] as const) {
+      const fieldConfig = schema.optionalFields[fieldName];
       if (fieldConfig && fieldConfig.enabled && fieldConfig.required && !data[fieldName]) {
         errors[fieldName] = `${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} is required for this locale.`;
       }
@@ -142,11 +192,11 @@ export const sanitizeString = (str: string): string => {
  * @returns True if password meets strength requirements
  */
 export const validatePassword = (password: string): boolean => {
-  const minLength = 8;
+  const minLength = 8; // OWASP recommended minimum password length
   const hasUpperCase = /[A-Z]/.test(password);
   const hasLowerCase = /[a-z]/.test(password);
   const hasNumbers = /\d/.test(password);
-  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password); // Common special characters excluding potentially problematic ones
   return password.length >= minLength && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar;
 };
 
@@ -242,29 +292,31 @@ export const validateEmailSecure = (email: string): boolean => {
  * @param schema - Validation schema
  * @returns Object containing validation errors
  */
-export const validateSecureInput = (data: any, schema: any): Record<string, string> => {
+export const validateSecureInput = (data: InputData, schema: ValidationSchema): ValidationResult => {
   const errors: Record<string, string> = {};
 
   // Sanitize and validate string fields
   Object.keys(data).forEach(key => {
-    if (typeof data[key] === 'string') {
+    const value = data[key];
+    if (typeof value === 'string') {
       // Check for XSS
-      if (detectXSS(data[key])) {
+      if (detectXSS(value)) {
         errors[key] = 'Input contains potentially malicious content';
         return;
       }
 
       // Check for SQL injection
-      if (detectSQLInjection(data[key])) {
+      if (detectSQLInjection(value)) {
         errors[key] = 'Input contains potentially malicious content';
         return;
       }
 
       // Sanitize the input
-      data[key] = sanitizeString(data[key]);
+      const sanitized = sanitizeString(value);
+      data[key] = sanitized;
 
       // Validate length if schema specifies
-      if (schema[key]?.maxLength && !validateLength(data[key], schema[key].maxLength)) {
+      if (schema[key]?.maxLength && !validateLength(sanitized, schema[key].maxLength)) {
         errors[key] = `Input exceeds maximum length of ${schema[key].maxLength} characters`;
       }
     }

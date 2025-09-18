@@ -72,3 +72,139 @@ groups:
         annotations:
           summary: "AI Security Threat Detected"
           description: "AI security events detected at rate {{ $value }} per second"
+
+      # Resource monitoring and cost optimization alerts
+      - alert: HighContainerMemoryUsage
+        expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High container memory usage"
+          description: "Container {{ $labels.container }} memory usage is {{ $value | humanizePercentage }}, approaching limit"
+
+      - alert: HighContainerCPUUsage
+        expr: rate(container_cpu_usage_seconds_total[5m]) / container_spec_cpu_limit_cores > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High container CPU usage"
+          description: "Container {{ $labels.container }} CPU usage is {{ $value | humanizePercentage }}, may trigger scaling"
+
+      - alert: PersistentHighResourceUsage
+        expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) > 0.9 or (rate(container_cpu_usage_seconds_total[10m]) / container_spec_cpu_limit_cores) > 0.9
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Persistent high resource usage"
+          description: "Container {{ $labels.container }} has sustained high resource usage for 15 minutes, consider scaling or optimization"
+
+      - alert: DatabaseConnectionPoolExhaustion
+        expr: mongodb_connections{state="active"} / mongodb_connections{state="available"} > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Database connection pool near exhaustion"
+          description: "MongoDB connection pool usage is {{ $value | humanizePercentage }}, consider increasing pool size"
+
+      - alert: CostInefficientResourceUsage
+        expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) < 0.3 and (rate(container_cpu_usage_seconds_total[1h]) / container_spec_cpu_limit_cores) < 0.2
+        for: 1h
+        labels:
+          severity: info
+        annotations:
+          summary: "Underutilized resources detected"
+       # Performance monitoring for critical user journeys
+       - alert: ResumeCreationSlow
+         expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{route="/api/resumes", method="POST"}[5m])) > 3
+         for: 5m
+         labels:
+           severity: warning
+         annotations:
+           summary: "Resume creation is slow"
+           description: "95th percentile response time for resume creation is {{ $value }}s, above 3s threshold"
+
+       - alert: ResumeRetrievalSlow
+         expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{route="/api/resumes", method="GET"}[5m])) > 1
+         for: 5m
+         labels:
+           severity: warning
+         annotations:
+           summary: "Resume retrieval is slow"
+           description: "95th percentile response time for resume retrieval is {{ $value }}s, above 1s threshold"
+
+       - alert: HealthCheckSlow
+         expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{route="/api/health"}[5m])) > 0.5
+         for: 5m
+         labels:
+           severity: warning
+         annotations:
+           summary: "Health check is slow"
+           description: "95th percentile response time for health check is {{ $value }}s, above 0.5s threshold"
+
+       - alert: CacheHitRateLow
+         expr: rate(cache_hits_total[5m]) / (rate(cache_hits_total[5m]) + rate(cache_misses_total[5m])) < 0.7
+         for: 10m
+         labels:
+           severity: warning
+         annotations:
+           summary: "Low cache hit rate"
+           description: "Cache hit rate is {{ $value | humanizePercentage }}, below 70% threshold"
+
+       - alert: DatabaseQuerySlow
+         expr: histogram_quantile(0.95, rate(db_query_duration_seconds_bucket[5m])) > 2
+         for: 5m
+         labels:
+           severity: warning
+         annotations:
+           summary: "Database queries are slow"
+           description: "95th percentile database query time is {{ $value }}s, above 2s threshold"
+
+       - alert: APIEndpointHighErrorRate
+         expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+         for: 5m
+         labels:
+           severity: critical
+         annotations:
+           summary: "High API error rate"
+           description: "API error rate is {{ $value | humanizePercentage }}, above 5% threshold"
+
+       - alert: UserJourneyFailure
+         expr: rate(user_journey_failures_total[5m]) > 0.01
+         for: 5m
+         labels:
+           severity: critical
+         annotations:
+           summary: "User journey failures detected"
+           description: "User journey failure rate is {{ $value }} per second"
+
+       - alert: PerformanceRegression
+         expr: (histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[10m])) - histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[10m] offset 1h))) / histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[10m] offset 1h)) > 0.2
+         for: 15m
+         labels:
+           severity: warning
+         annotations:
+           summary: "Performance regression detected"
+           description: "95th percentile latency increased by {{ $value | humanizePercentage }} compared to 1 hour ago"
+
+       - alert: MemoryLeakDetected
+         expr: increase(memory_usage_bytes{type="heap_used"}[1h]) > 100 * 1024 * 1024
+         for: 30m
+         labels:
+           severity: warning
+         annotations:
+           summary: "Potential memory leak detected"
+           description: "Heap memory usage increased by {{ $value | humanizeBytes }} in the last hour"
+
+       - alert: DatabaseConnectionTimeout
+         expr: rate(db_connection_timeouts_total[5m]) > 0.001
+         for: 5m
+         labels:
+           severity: critical
+         annotations:
+           summary: "Database connection timeouts"
+           description: "Database connection timeout rate is {{ $value }} per second"
+          description: "Container {{ $labels.container }} is underutilizing allocated resources, consider rightsizing for cost optimization"

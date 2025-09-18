@@ -1,0 +1,84 @@
+# ProfileBuilder Spike Testing Configuration
+# Tests sudden traffic spikes to simulate viral events or flash sales
+# Run with: artillery run benchmarks/spike-test.yml
+
+config:
+  target: 'http://localhost:3000'
+  phases:
+    # Baseline load
+    - duration: 60
+      arrivalRate: 2
+      name: "Baseline"
+    # Sudden spike
+    - duration: 30
+      arrivalRate: 100
+      name: "Traffic Spike"
+    # Return to baseline
+    - duration: 60
+      arrivalRate: 2
+      name: "Post-Spike Recovery"
+    # Another spike
+    - duration: 15
+      arrivalRate: 150
+      name: "Second Spike"
+    # Final recovery
+    - duration: 60
+      arrivalRate: 1
+      name: "Final Recovery"
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+      User-Agent: 'Artillery-Spike-Test/1.0'
+    timeout: 10000  # Shorter timeout for spike tests
+
+scenarios:
+  # Fast health checks during spikes
+  - name: "Spike Health Check"
+    weight: 60
+    flow:
+      - get:
+          url: "/api/health"
+          expect:
+            - statusCode: 200
+
+  # Resume reads during spikes
+  - name: "Spike Resume Read"
+    weight: 30
+    flow:
+      - get:
+          url: "/api/resumes"
+          expect:
+            - statusCode: 200
+
+  # Minimal writes during spikes
+  - name: "Spike Resume Create"
+    weight: 10
+    flow:
+      - post:
+          url: "/api/resumes"
+          json:
+            title: "Spike Test Resume {{ $randomString() }}"
+            content: |
+              {
+                "personalInfo": {
+                  "firstName": "Spike",
+                  "lastName": "Test{{ $randomInt(1, 1000) }}",
+                  "email": "spike{{ $randomInt(1, 1000) }}@example.com"
+                },
+                "summary": "Spike testing under sudden load",
+                "workExperience": [{
+                  "company": "SpikeTest Inc",
+                  "position": "Spike Tester",
+                  "startDate": "2023-01-01",
+                  "description": "Testing sudden traffic spikes"
+                }],
+                "education": [{
+                  "institution": "Spike University",
+                  "degree": "BS Spike Testing",
+                  "graduationYear": 2022
+                }],
+                "skills": ["Spike Testing", "Traffic Handling"],
+                "locale": "en-US"
+              }
+          expect:
+            - statusCode: 201

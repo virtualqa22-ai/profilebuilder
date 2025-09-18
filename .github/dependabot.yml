@@ -1,0 +1,73 @@
+version: 2
+updates:
+  # Enable version updates for npm
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "your-github-username"  # Replace with actual reviewer
+    assignees:
+      - "your-github-username"  # Replace with actual assignee
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "automated"
+    groups:
+      # Group patch updates together
+      patch-updates:
+        update-types:
+          - "patch"
+      # Group minor updates for production dependencies
+      minor-updates:
+        update-types:
+          - "minor"
+        dependency-type: "production"
+      # Group development dependencies
+      dev-dependencies:
+        dependency-type: "development"
+      # Group security updates
+      security-updates:
+        update-types:
+          - "patch"
+        dependency-type: "production"
+        vulnerability-severity: "high"
+    # Ignore specific dependencies if needed
+    ignore:
+      # Ignore major version updates for Next.js until tested
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      # Ignore React major updates
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+    # Allow updates to lockfile only
+    versioning-strategy: increase
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "your-github-username"
+    assignees:
+      - "your-github-username"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "github-actions"
+      - "automated"

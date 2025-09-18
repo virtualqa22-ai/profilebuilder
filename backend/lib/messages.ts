@@ -21,6 +21,13 @@ export const ERROR_MESSAGES = {
   AUTH_FAILED: 'Authentication failed',
   DATABASE_ERROR: 'Database operation failed',
   VALIDATION_ERROR: 'Validation failed',
+  // Security-related error messages
+  RATE_LIMIT_EXCEEDED: 'Rate limit exceeded',
+  INPUT_VALIDATION_FAILED: 'Input validation failed',
+  ACCESS_DENIED: 'Access denied',
+  SUSPICIOUS_ACTIVITY_DETECTED: 'Suspicious activity detected',
+  ENCRYPTION_ERROR: 'Encryption operation failed',
+  SECURITY_VIOLATION: 'Security violation detected',
 } as const;
 
 // Success Messages
@@ -44,6 +51,10 @@ export const ALERT_MESSAGES = {
   UPLOAD_ERROR: 'Upload failed',
   IMPORT_ERROR: 'An error occurred during import',
   GENERATION_ERROR: 'An error occurred during PDF generation',
+  // Security-related alert messages
+  SECURITY_ALERT: 'Security alert triggered',
+  CRITICAL_SECURITY_EVENT: 'Critical security event detected',
+  HIGH_RISK_ACTIVITY: 'High risk activity detected',
 } as const;
 
 // Info Messages

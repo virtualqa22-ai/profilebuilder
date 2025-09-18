@@ -1,8 +1,8 @@
 {
   "dashboard": {
     "id": null,
-    "title": "ProfileBuilder Observability Dashboard",
-    "tags": ["profilebuilder", "observability"],
+    "title": "ProfileBuilder Performance & Observability Dashboard",
+    "tags": ["profilebuilder", "performance", "observability"],
     "timezone": "browser",
     "panels": [
       {
@@ -24,12 +24,16 @@
       },
       {
         "id": 2,
-        "title": "HTTP Request Duration",
+        "title": "HTTP Request Duration (P95)",
         "type": "graph",
         "targets": [
           {
-            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
-            "legendFormat": "95th percentile"
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) * 1000",
+            "legendFormat": "P95 {{route}}"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m])) * 1000",
+            "legendFormat": "P50 {{route}}"
           }
         ],
         "gridPos": {
@@ -37,16 +41,29 @@
           "w": 12,
           "x": 12,
           "y": 0
-        }
+        },
+        "yAxes": [
+          {
+            "unit": "ms",
+            "min": 0
+          },
+          {
+            "unit": "short"
+          }
+        ]
       },
       {
         "id": 3,
-        "title": "Error Rate",
+        "title": "API Error Rate",
         "type": "graph",
         "targets": [
           {
-            "expr": "rate(errors_total[5m])",
-            "legendFormat": "{{type}} {{code}}"
+            "expr": "rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m]) * 100",
+            "legendFormat": "5xx Error Rate"
+          },
+          {
+            "expr": "rate(http_requests_total{status=~\"4..\"}[5m]) / rate(http_requests_total[5m]) * 100",
+            "legendFormat": "4xx Error Rate"
           }
         ],
         "gridPos": {
@@ -54,16 +71,30 @@
           "w": 12,
           "x": 0,
           "y": 8
-        }
+        },
+        "yAxes": [
+          {
+            "unit": "percent",
+            "min": 0,
+            "max": 100
+          },
+          {
+            "unit": "short"
+          }
+        ]
       },
       {
         "id": 4,
-        "title": "Memory Usage",
+        "title": "System Resources",
         "type": "graph",
         "targets": [
           {
-            "expr": "memory_usage_bytes",
-            "legendFormat": "{{type}}"
+            "expr": "memory_usage_bytes{type=\"heap_used\"} / memory_usage_bytes{type=\"heap_total\"} * 100",
+            "legendFormat": "Memory Usage %"
+          },
+          {
+            "expr": "rate(cpu_usage_seconds_total[5m]) * 100",
+            "legendFormat": "CPU Usage %"
           }
         ],
         "gridPos": {
@@ -71,6 +102,232 @@
           "w": 12,
           "x": 12,
           "y": 8
+        },
+        "yAxes": [
+          {
+            "unit": "percent",
+            "min": 0,
+            "max": 100
+          },
+          {
+            "unit": "short"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Database Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(db_query_duration_seconds_bucket[5m])) * 1000",
+            "legendFormat": "DB Query P95 (ms)"
+          },
+          {
+            "expr": "rate(db_queries_total[5m])",
+            "legendFormat": "DB Queries/sec"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        }
+      },
+      {
+        "id": 6,
+        "title": "Cache Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(cache_hits_total[5m]) / (rate(cache_hits_total[5m]) + rate(cache_misses_total[5m])) * 100",
+            "legendFormat": "Cache Hit Rate %"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(cache_operation_duration_seconds_bucket{operation=\"get\"}[5m])) * 1000",
+            "legendFormat": "Cache Get P95 (ms)"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        }
+      },
+      {
+        "id": 7,
+        "title": "SLA Compliance - Response Times",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{route=\"/api/health\"}[5m])) * 1000 < 500",
+            "legendFormat": "Health Check < 500ms"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{route=\"/api/resumes\", method=\"GET\"}[5m])) * 1000 < 1000",
+            "legendFormat": "Resume List < 1s"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{route=\"/api/resumes\", method=\"POST\"}[5m])) * 1000 < 3000",
+            "legendFormat": "Resume Create < 3s"
+          }
+        ],
+        "gridPos": {
+          "h": 6,
+          "w": 24,
+          "x": 0,
+          "y": 24
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "❌ FAIL",
+                    "color": "red"
+                  },
+                  "1": {
+                    "text": "✅ PASS",
+                    "color": "green"
+                  }
+                },
+                "type": "value"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Performance Trends (24h)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) * 1000",
+            "legendFormat": "P95 Response Time (ms)"
+          },
+          {
+            "expr": "rate(http_requests_total[5m])",
+            "legendFormat": "Request Rate"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 30
+        },
+        "timeFrom": "24h"
+      },
+      {
+        "id": 9,
+        "title": "Active Alerts",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "count(ALERTS{alertstate=\"firing\"})",
+            "legendFormat": "Active Alerts"
+          }
+        ],
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 38
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "options": {
+                  "match": "null",
+                  "result": {
+                    "text": "0",
+                    "color": "green"
+                  }
+                },
+                "type": "special"
+              }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 1
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 10,
+        "title": "System Health Score",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "(1 - clamp_max(rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m]), 1)) * (1 - clamp_max(histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) / 2, 1)) * 100",
+            "legendFormat": "Health Score"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 6,
+          "y": 38
+        },
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "orange",
+                  "value": 70
+                },
+                {
+                  "color": "green",
+                  "value": 90
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 11,
+        "title": "Top Slow Endpoints",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "topk(10, histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) * 1000)",
+            "legendFormat": "{{ route }}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 10,
+          "x": 14,
+          "y": 38
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms"
+          }
         }
       }
     ],
@@ -85,7 +342,7 @@
     "annotations": {
       "list": []
     },
-    "refresh": "5s",
+    "refresh": "30s",
     "schemaVersion": 27,
     "version": 0,
     "links": []

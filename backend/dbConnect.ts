@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { connectDatabase } from './lib/databaseManager';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -24,11 +25,8 @@ async function dbConnect() {
   }
 
   if (!cached.promise) {
-    const opts = {
-      bufferCommands: false,
-    };
-
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+    // Use the optimized database manager with connection pooling
+    cached.promise = connectDatabase(MONGODB_URI).then((mongoose) => {
       return mongoose;
     });
   }

@@ -53,6 +53,36 @@ services:
     networks:
       - monitoring
 
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      - /dev/kmsg
+    privileged: true
+    networks:
+      - monitoring
+
+  mongodb-exporter:
+    image: percona/mongodb_exporter:0.39
+    container_name: mongodb-exporter
+    ports:
+      - "9216:9216"
+    environment:
+      - MONGODB_URI=mongodb://host.docker.internal:27017/admin
+    command:
+      - '--mongodb.uri=mongodb://host.docker.internal:27017/admin'
+      - '--web.listen-address=:9216'
+    networks:
+      - monitoring
+
 volumes:
   prometheus_data:
   grafana_data:

@@ -11,6 +11,9 @@
 
 import User from '../models/User';
 import Resume from '../models/Resume';
+import ConsentRecord from '../models/ConsentRecord';
+import AuditLog from '../models/AuditLog';
+import ErasureRequest from '../models/ErasureRequest';
 
 /**
  * Data Processing Purpose Types
@@ -103,8 +106,17 @@ export class ConsentManager {
       userAgent,
     };
 
-    // TODO: Save to database
-    // await saveConsentToDatabase(consent);
+    // Save consent to database
+    const consentRecord = new ConsentRecord({
+      userId,
+      purpose,
+      status: ConsentStatus.GRANTED,
+      grantedAt: new Date(),
+      expiresAt,
+      ipAddress,
+      userAgent,
+    });
+    await consentRecord.save();
 
     // Log the consent grant
     await PrivacyAuditor.logAuditEvent({
@@ -131,8 +143,12 @@ export class ConsentManager {
     ipAddress: string,
     userAgent: string
   ): Promise<void> {
-    // TODO: Update consent status in database
-    // await updateConsentStatus(userId, purpose, ConsentStatus.WITHDRAWN);
+    // Update consent status in database
+    await ConsentRecord.findOneAndUpdate(
+      { userId, purpose },
+      { status: ConsentStatus.WITHDRAWN, withdrawnAt: new Date() },
+      { new: true }
+    );
 
     // Log the consent withdrawal
     await PrivacyAuditor.logAuditEvent({
@@ -155,23 +171,17 @@ export class ConsentManager {
     userId: string,
     purpose: DataProcessingPurpose
   ): Promise<boolean> {
-    // TODO: Check database for active consent
-    // const consent = await getConsentFromDatabase(userId, purpose);
-    // return consent?.status === ConsentStatus.GRANTED && (!consent.expiresAt || consent.expiresAt > new Date());
-
-    // Placeholder - implement database check
-    return true; // Assume consent for now
+    // Check database for active consent
+    const consent = await ConsentRecord.findOne({ userId, purpose }).sort({ grantedAt: -1 });
+    return consent?.status === ConsentStatus.GRANTED && (!consent.expiresAt || consent.expiresAt > new Date());
   }
 
   /**
    * Gets all consents for a user
    */
   static async getUserConsents(userId: string): Promise<DataConsent[]> {
-    // TODO: Retrieve from database
-    // return await getConsentsFromDatabase(userId);
-
-    // Placeholder
-    return [];
+    // Retrieve from database
+    return await ConsentRecord.find({ userId }).sort({ grantedAt: -1 });
   }
 }
 
@@ -190,6 +200,19 @@ export class DataErasureManager {
   ): Promise<{ requestId: string; estimatedCompletion: Date }> {
     const requestId = `erasure_${Date.now()}_${userId}`;
 
+    // Save erasure request to database
+    const erasureRequest = new ErasureRequest({
+      userId,
+      requestId,
+      reason,
+      status: 'pending',
+      requestedAt: new Date(),
+      ipAddress,
+      userAgent,
+      estimatedCompletion: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+    });
+    await erasureRequest.save();
+
     // Log the erasure request
     await PrivacyAuditor.logAuditEvent({
       userId,
@@ -203,13 +226,7 @@ export class DataErasureManager {
       details: `Data erasure requested: ${reason}`,
     });
 
-    // TODO: Implement actual data erasure process
-    // This should be done asynchronously to avoid blocking
-    // await queueErasureJob(userId, requestId);
-
-    const estimatedCompletion = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
-
-    return { requestId, estimatedCompletion };
+    return { requestId, estimatedCompletion: erasureRequest.estimatedCompletion };
   }
 
   /**
@@ -218,16 +235,22 @@ export class DataErasureManager {
   static async performErasure(userId: string): Promise<void> {
     try {
       // Delete user account
-      // await User.findByIdAndDelete(userId);
+      await User.findByIdAndDelete(userId);
 
       // Delete all user resumes
-      // await Resume.deleteMany({ userId });
+      await Resume.deleteMany({ userId });
 
       // Delete consent records
-      // await deleteUserConsents(userId);
+      await ConsentRecord.deleteMany({ userId });
 
       // Delete audit logs (except erasure logs)
-      // await deleteUserAuditLogs(userId);
+      await AuditLog.deleteMany({ userId, action: { $ne: 'delete' } });
+
+      // Update erasure request status
+      await ErasureRequest.findOneAndUpdate(
+        { userId, status: 'processing' },
+        { status: 'completed', completedAt: new Date() }
+      );
 
       // Log final erasure
       await PrivacyAuditor.logAuditEvent({
@@ -243,6 +266,11 @@ export class DataErasureManager {
       });
 
     } catch (error) {
+      // Update erasure request status to failed
+      await ErasureRequest.findOneAndUpdate(
+        { userId, status: 'processing' },
+        { status: 'failed' }
+      );
       console.error('Data erasure failed:', error);
       throw new Error('Data erasure process failed');
     }
@@ -252,9 +280,33 @@ export class DataErasureManager {
    * Anonymizes user data instead of complete deletion (alternative to erasure)
    */
   static async anonymizeUserData(userId: string): Promise<void> {
-    // TODO: Implement data anonymization
-    // Replace PII with anonymized values
-    // Keep structure for analytics but remove identifiable information
+    // Anonymize user data by replacing PII with generic values
+    await User.findByIdAndUpdate(userId, {
+      email: `anonymous_${userId}@deleted.local`,
+      name: 'Anonymous User',
+    });
+
+    // Anonymize resumes
+    const resumes = await Resume.find({ userId });
+    for (const resume of resumes) {
+      await Resume.findByIdAndUpdate(resume._id, {
+        title: 'Anonymized Resume',
+        content: 'This resume has been anonymized for privacy compliance.',
+      });
+    }
+
+    // Log anonymization
+    await PrivacyAuditor.logAuditEvent({
+      userId,
+      action: 'modify',
+      resourceType: 'user',
+      resourceId: userId,
+      timestamp: new Date(),
+      ipAddress: 'system',
+      userAgent: 'system',
+      performedBy: 'system',
+      details: 'User data anonymized for privacy compliance',
+    });
   }
 }
 
@@ -266,19 +318,19 @@ export class DataPortabilityManager {
    * Exports all user data in portable format
    */
   static async exportUserData(userId: string): Promise<DataExport> {
-    // TODO: Gather all user data
-    // const user = await User.findById(userId);
-    // const resumes = await Resume.find({ userId });
-    // const consents = await ConsentManager.getUserConsents(userId);
-    // const auditLog = await PrivacyAuditor.getUserAuditLog(userId);
+    // Gather all user data
+    const user = await User.findById(userId);
+    const resumes = await Resume.find({ userId });
+    const consents = await ConsentManager.getUserConsents(userId);
+    const auditLog = await PrivacyAuditor.getUserAuditLog(userId);
 
     const exportData: DataExport = {
       user: {
-        personalData: {}, // TODO: Populate with actual user data
-        consents: [], // TODO: Populate with actual consents
-        auditLog: [], // TODO: Populate with actual audit log
+        personalData: user,
+        consents,
+        auditLog,
       },
-      resumes: [], // TODO: Populate with actual resumes
+      resumes,
       metadata: {
         exportDate: new Date(),
         formatVersion: '1.0',
@@ -306,9 +358,9 @@ export class DataPortabilityManager {
    * Validates data export format
    */
   static validateExportFormat(data: DataExport): boolean {
-    // TODO: Implement validation logic
+    // Implement validation logic
     // Check required fields, data integrity, etc.
-    return true;
+    return data.user && data.resumes && data.metadata && data.metadata.exportDate && data.metadata.formatVersion;
   }
 }
 
@@ -320,27 +372,22 @@ export class PrivacyAuditor {
    * Logs privacy-related audit events
    */
   static async logAuditEvent(event: PrivacyAuditLog): Promise<void> {
-    // TODO: Save to secure audit log database
-    // Ensure audit logs cannot be modified or deleted
+    // Save to secure audit log database
+    const auditLog = new AuditLog(event);
+    await auditLog.save();
 
     console.log('Privacy Audit Event:', {
       ...event,
       timestamp: event.timestamp.toISOString(),
     });
-
-    // TODO: Implement secure audit logging
-    // await saveAuditLogToDatabase(event);
   }
 
   /**
    * Retrieves audit log for a user
    */
   static async getUserAuditLog(userId: string): Promise<PrivacyAuditLog[]> {
-    // TODO: Retrieve from audit database
-    // return await getAuditLogsFromDatabase(userId);
-
-    // Placeholder
-    return [];
+    // Retrieve from audit database
+    return await AuditLog.find({ userId }).sort({ timestamp: -1 });
   }
 
   /**
@@ -356,15 +403,37 @@ export class PrivacyAuditor {
     dataErasureRequests: number;
     dataExportRequests: number;
   }> {
-    // TODO: Generate compliance metrics from audit logs
-    // This would be used for regulatory reporting
+    // Generate compliance metrics from audit logs
+    const consentGranted = await AuditLog.countDocuments({
+      action: 'consent_granted',
+      timestamp: { $gte: startDate, $lte: endDate },
+    });
+
+    const consentWithdrawn = await AuditLog.countDocuments({
+      action: 'consent_withdrawn',
+      timestamp: { $gte: startDate, $lte: endDate },
+    });
+
+    const dataErasureRequests = await AuditLog.countDocuments({
+      action: 'delete',
+      resourceType: 'user',
+      timestamp: { $gte: startDate, $lte: endDate },
+    });
+
+    const dataExportRequests = await AuditLog.countDocuments({
+      action: 'export',
+      resourceType: 'user',
+      timestamp: { $gte: startDate, $lte: endDate },
+    });
+
+    const totalUsers = await User.countDocuments();
 
     return {
-      totalUsers: 0,
-      consentGranted: 0,
-      consentWithdrawn: 0,
-      dataErasureRequests: 0,
-      dataExportRequests: 0,
+      totalUsers,
+      consentGranted,
+      consentWithdrawn,
+      dataErasureRequests,
+      dataExportRequests,
     };
   }
 }

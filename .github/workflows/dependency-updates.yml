@@ -1,0 +1,193 @@
+name: Dependency Updates
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  pull_request_target:
+    types: [ opened, synchronize, reopened ]
+    branches: [ main, develop ]
+
+jobs:
+  # Run tests and checks on dependency update PRs
+  dependency-check:
+    name: Dependency Update Validation
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' &&
+      (github.actor == 'dependabot[bot]' || contains(github.head_ref, 'dependabot'))
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run type checking
+        run: npm run type-check
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run tests
+        run: npm run test:coverage
+
+      - name: Run security audit
+        run: npm run security:audit
+        continue-on-error: true
+
+      - name: Build application
+        run: npm run build
+
+      - name: Run dependency health check
+        run: npm run deps:health
+
+      - name: Comment on PR with dependency report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { exec } = require('child_process');
+            const util = require('util');
+            const execAsync = util.promisify(exec);
+
+            try {
+              // Get dependency health info
+              const { stdout: healthOutput } = await execAsync('npm run deps:health');
+              const health = JSON.parse(healthOutput);
+
+              // Get outdated packages
+              const { stdout: outdatedOutput } = await execAsync('npm outdated --json || echo "{}"');
+              const outdated = JSON.parse(outdatedOutput);
+
+              // Create comment
+              let comment = '## 🔍 Dependency Update Analysis\n\n';
+
+              // Security summary
+              comment += '### Security Status\n';
+              if (health.total === 0) {
+                comment += '✅ **No vulnerabilities found**\n\n';
+              } else {
+                comment += `⚠️ **${health.total} vulnerabilities detected**\n`;
+                comment += `- Critical: ${health.critical || 0}\n`;
+                comment += `- High: ${health.high || 0}\n`;
+                comment += `- Moderate: ${health.moderate || 0}\n`;
+                comment += `- Low: ${health.low || 0}\n\n`;
+              }
+
+              // Outdated packages
+              const outdatedCount = Object.keys(outdated).length;
+              if (outdatedCount > 0) {
+                comment += `### 📦 Outdated Packages (${outdatedCount})\n`;
+                Object.entries(outdated).slice(0, 10).forEach(([pkg, info]) => {
+                  comment += `- \`${pkg}\`: ${info.current} → ${info.latest}\n`;
+                });
+                if (outdatedCount > 10) {
+                  comment += `- ... and ${outdatedCount - 10} more\n`;
+                }
+                comment += '\n';
+              } else {
+                comment += '### 📦 Package Status\n✅ All packages are up to date\n\n';
+              }
+
+              comment += '### ✅ Validation Results\n';
+              comment += '- Type checking: ✅ Passed\n';
+              comment += '- Linting: ✅ Passed\n';
+              comment += '- Tests: ✅ Passed\n';
+              comment += '- Build: ✅ Passed\n';
+
+              // Post comment
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+
+            } catch (error) {
+              console.error('Error generating dependency report:', error);
+            }
+
+  # Additional security scan for dependency updates
+  security-scan-deps:
+    name: Security Scan for Dependencies
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' &&
+      (github.actor == 'dependabot[bot]' || contains(github.head_ref, 'dependabot'))
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # OWASP Dependency Check for updated dependencies
+      - name: Run OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'ProfileBuilder'
+          path: '.'
+          format: 'SARIF'
+          args: >
+            --enableRetired
+            --enableExperimental
+            --nvdValidForHours 24
+
+      - name: Upload OWASP results to Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: dependency-check-report.sarif
+
+      # Trivy scan for updated dependencies
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-deps-results.sarif'
+
+      - name: Upload Trivy results to Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-deps-results.sarif'
+
+  # Auto-merge for patch updates (optional - enable if desired)
+  auto-merge:
+    name: Auto-merge Patch Updates
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' &&
+      github.actor == 'dependabot[bot]' &&
+      contains(github.head_ref, 'patch') &&
+      !contains(github.head_ref, 'major')
+    needs: [dependency-check, security-scan-deps]
+    steps:
+      - name: Auto-merge patch updates
+        uses: pascalgn/auto-merge-action@v0.16.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          merge_method: squash
+          commit_message: "chore: auto-merge patch updates"
+          # Only merge if all checks pass
+          required_status_checks: "all"

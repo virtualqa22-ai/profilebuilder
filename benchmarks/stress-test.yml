@@ -1,0 +1,98 @@
+# ProfileBuilder Stress Testing Configuration
+# Tests system under extreme load to find breaking points
+# Run with: artillery run benchmarks/stress-test.yml
+
+config:
+  target: 'http://localhost:3000'
+  phases:
+    # Gradual increase to find limits
+    - duration: 60
+      arrivalRate: 5
+      rampTo: 50
+      name: "Gradual Ramp-up"
+    # High load phase
+    - duration: 180
+      arrivalRate: 50
+      rampTo: 200
+      name: "High Load Stress"
+    # Maximum stress
+    - duration: 120
+      arrivalRate: 200
+      name: "Maximum Stress"
+    # Recovery phase
+    - duration: 60
+      arrivalRate: 20
+      name: "Recovery"
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+      User-Agent: 'Artillery-Stress-Test/1.0'
+    timeout: 30000  # 30 second timeout for stress tests
+
+scenarios:
+  # Health check - should remain responsive under stress
+  - name: "Health Check Stress"
+    weight: 50
+    flow:
+      - get:
+          url: "/api/health"
+          expect:
+            - statusCode: 200
+          capture:
+            json: "$.responseTime"
+            as: "healthResponseTime"
+
+  # Resume operations under stress
+  - name: "Resume CRUD Stress"
+    weight: 30
+    flow:
+      # Create resume
+      - post:
+          url: "/api/resumes"
+          json:
+            title: "Stress Test Resume {{ $randomString() }}"
+            content: |
+              {
+                "personalInfo": {
+                  "firstName": "Stress",
+                  "lastName": "Test{{ $randomInt(1, 10000) }}",
+                  "email": "stress{{ $randomInt(1, 10000) }}@example.com"
+                },
+                "summary": "Stress testing resume creation under high load",
+                "workExperience": [{
+                  "company": "StressTest Corp",
+                  "position": "Load Tester",
+                  "startDate": "2023-01-01",
+                  "description": "Testing system under extreme load conditions"
+                }],
+                "education": [{
+                  "institution": "Stress University",
+                  "degree": "BS Load Testing",
+                  "graduationYear": 2022
+                }],
+                "skills": ["Stress Testing", "Load Testing", "Performance"],
+                "locale": "en-US"
+              }
+          expect:
+            - statusCode: 201
+          capture:
+            json: "$.data._id"
+            as: "stressResumeId"
+
+      # Immediately read it back
+      - get:
+          url: "/api/resumes"
+          expect:
+            - statusCode: 200
+
+  # Database-intensive operations
+  - name: "Database Stress"
+    weight: 20
+    flow:
+      - get:
+          url: "/api/resumes"
+          expect:
+            - statusCode: 200
+          capture:
+            json: "$.data"
+            as: "resumesList"

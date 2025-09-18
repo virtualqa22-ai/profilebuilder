@@ -1,0 +1,152 @@
+# ProfileBuilder Load Testing Configuration
+# Run with: artillery run benchmarks/load-test.yml
+
+config:
+  target: 'http://localhost:3000'
+  phases:
+    # Warm-up phase
+    - duration: 60
+      arrivalRate: 1
+      name: "Warm-up"
+    # Ramp-up phase
+    - duration: 120
+      arrivalRate: 1
+      rampTo: 10
+      name: "Ramp-up"
+    # Sustained load
+    - duration: 300
+      arrivalRate: 10
+      name: "Sustained Load"
+    # Cool-down
+    - duration: 60
+      arrivalRate: 5
+      name: "Cool-down"
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+      User-Agent: 'Artillery-Load-Test/1.0'
+
+scenarios:
+  # Health check scenario - lightweight, frequent
+  - name: "Health Check"
+    weight: 30
+    flow:
+      - get:
+          url: "/api/health"
+          expect:
+            - statusCode: 200
+
+  # Resume listing - common read operation
+  - name: "Get Resumes"
+    weight: 40
+    flow:
+      - get:
+          url: "/api/resumes"
+          expect:
+            - statusCode: 200
+          capture:
+            json: "$.data[0]._id"
+            as: "resumeId"
+
+  # Resume creation - write operation
+  - name: "Create Resume"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/resumes"
+          json:
+            title: "Load Test Resume {{ $randomString() }}"
+            content: |
+              {
+                "personalInfo": {
+                  "firstName": "Test",
+                  "lastName": "User{{ $randomInt(1, 1000) }}",
+                  "email": "test{{ $randomInt(1, 1000) }}@example.com"
+                },
+                "summary": "Load testing resume creation",
+                "workExperience": [{
+                  "company": "LoadTest Corp",
+                  "position": "Tester",
+                  "startDate": "2023-01-01",
+                  "description": "Testing under load"
+                }],
+                "education": [{
+                  "institution": "Test University",
+                  "degree": "BS Computer Science",
+                  "graduationYear": 2022
+                }],
+                "skills": ["Testing", "Load Testing"],
+                "locale": "en-US"
+              }
+          expect:
+            - statusCode: 201
+          capture:
+            json: "$.data._id"
+            as: "newResumeId"
+
+  # Locale data - static content
+  - name: "Get Locales"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/locales"
+          expect:
+            - statusCode: 200
+
+  # Metrics endpoint - monitoring
+  - name: "Get Metrics"
+    weight: 5
+    flow:
+      - get:
+          url: "/api/metrics"
+          expect:
+            - statusCode: 200
+
+  # Complex user journey - create and read resume
+  - name: "User Journey"
+    weight: 15
+    flow:
+      # Create resume
+      - post:
+          url: "/api/resumes"
+          json:
+            title: "Journey Test Resume {{ $randomString() }}"
+            content: |
+              {
+                "personalInfo": {
+                  "firstName": "Journey",
+                  "lastName": "Test{{ $randomInt(1, 1000) }}",
+                  "email": "journey{{ $randomInt(1, 1000) }}@example.com"
+                },
+                "summary": "Complete user journey test",
+                "workExperience": [{
+                  "company": "Journey Corp",
+                  "position": "User",
+                  "startDate": "2023-01-01",
+                  "description": "Testing complete user journey"
+                }],
+                "education": [{
+                  "institution": "Journey University",
+                  "degree": "BS Testing",
+                  "graduationYear": 2022
+                }],
+                "skills": ["Journey Testing", "User Flows"],
+                "locale": "en-US"
+              }
+          expect:
+            - statusCode: 201
+          capture:
+            json: "$.data._id"
+            as: "journeyResumeId"
+
+      # Read it back
+      - get:
+          url: "/api/resumes"
+          expect:
+            - statusCode: 200
+
+      # Check health
+      - get:
+          url: "/api/health"
+          expect:
+            - statusCode: 200

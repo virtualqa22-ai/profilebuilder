@@ -6,6 +6,7 @@ import { getLocaleByCode, ILocale } from '../../../backend/lib/localeService';
 import { validateResumeData } from '../../../backend/lib/validations';
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../../../backend/lib/messages';
 import { SECURITY_HEADERS, DEFAULT_LOCALE, MAX_TITLE_LENGTH } from '../../../backend/lib/constants';
+import { getCacheManager } from '../../../backend/lib/cacheManager';
 
 function setSecurityHeaders(res: NextResponse) {
   res.headers.set('X-Content-Type-Options', 'nosniff');
@@ -17,10 +18,23 @@ function setSecurityHeaders(res: NextResponse) {
 }
 
 export async function GET() {
-  await dbConnect();
-  const Resume = mongoose.model('Resume');
   try {
-    const resumes = await Resume.find({});
+    const cacheManager = getCacheManager();
+    const cacheKey = 'resumes:all';
+
+    // Try to get from cache first
+    let resumes = await cacheManager.get(cacheKey);
+
+    if (!resumes) {
+      // Cache miss - fetch from database
+      await dbConnect();
+      const Resume = mongoose.model('Resume');
+      resumes = await Resume.find({});
+
+      // Cache the result for future requests (TTL: 5 minutes for dynamic data)
+      await cacheManager.set(cacheKey, resumes, 300);
+    }
+
     const res = NextResponse.json({ success: true, data: resumes });
     setSecurityHeaders(res);
     return res;
@@ -113,6 +127,11 @@ export async function POST(req: Request) {
     }
 
   const resume = await Resume.create({ ...resumeData, locale });
+
+    // Invalidate cache when new resume is created
+    const cacheManager = getCacheManager();
+    await cacheManager.delete('resumes:all');
+
     const res = NextResponse.json({ success: true, data: resume }, { status: 201 });
     setSecurityHeaders(res);
     return res;

@@ -1,0 +1,95 @@
+# ProfileBuilder Endurance Testing Configuration
+# Tests system stability over extended periods under moderate load
+# Run with: artillery run benchmarks/endurance-test.yml
+
+config:
+  target: 'http://localhost:3000'
+  phases:
+    # Extended steady load
+    - duration: 1800  # 30 minutes
+      arrivalRate: 5
+      name: "Extended Load"
+    # Brief high load period
+    - duration: 300   # 5 minutes
+      arrivalRate: 15
+      name: "High Load Period"
+    # Return to steady load
+    - duration: 1800  # 30 minutes
+      arrivalRate: 5
+      name: "Return to Steady"
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+      User-Agent: 'Artillery-Endurance-Test/1.0'
+    timeout: 20000  # 20 second timeout for endurance tests
+
+scenarios:
+  # Health monitoring throughout endurance test
+  - name: "Endurance Health Check"
+    weight: 40
+    flow:
+      - get:
+          url: "/api/health"
+          expect:
+            - statusCode: 200
+          capture:
+            json: "$.uptime"
+            as: "systemUptime"
+
+  # Resume operations over time
+  - name: "Endurance Resume Operations"
+    weight: 35
+    flow:
+      # Create resume
+      - post:
+          url: "/api/resumes"
+          json:
+            title: "Endurance Test Resume {{ $randomString() }}"
+            content: |
+              {
+                "personalInfo": {
+                  "firstName": "Endurance",
+                  "lastName": "Test{{ $randomInt(1, 10000) }}",
+                  "email": "endurance{{ $randomInt(1, 10000) }}@example.com"
+                },
+                "summary": "Endurance testing over extended periods",
+                "workExperience": [{
+                  "company": "EnduranceTest LLC",
+                  "position": "Long-term Tester",
+                  "startDate": "2023-01-01",
+                  "description": "Testing system stability over time"
+                }],
+                "education": [{
+                  "institution": "Endurance University",
+                  "degree": "BS Endurance Testing",
+                  "graduationYear": 2022
+                }],
+                "skills": ["Endurance Testing", "Stability Testing", "Long-term Performance"],
+                "locale": "en-US"
+              }
+          expect:
+            - statusCode: 201
+
+      # Read resumes
+      - get:
+          url: "/api/resumes"
+          expect:
+            - statusCode: 200
+
+  # Metrics monitoring
+  - name: "Endurance Metrics Check"
+    weight: 15
+    flow:
+      - get:
+          url: "/api/metrics"
+          expect:
+            - statusCode: 200
+
+  # Locale data access
+  - name: "Endurance Locale Access"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/locales"
+          expect:
+            - statusCode: 200
