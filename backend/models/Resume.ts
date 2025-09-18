@@ -1,4 +1,16 @@
 import mongoose from 'mongoose';
+import CryptoJS from 'crypto-js';
+
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default-key-change-in-prod';
+
+const encrypt = (text: string) => {
+  return CryptoJS.AES.encrypt(text, ENCRYPTION_KEY).toString();
+};
+
+const decrypt = (ciphertext: string) => {
+  const bytes = CryptoJS.AES.decrypt(ciphertext, ENCRYPTION_KEY);
+  return bytes.toString(CryptoJS.enc.Utf8);
+};
 
 const CommentSchema = new mongoose.Schema({
   field: {
@@ -47,6 +59,67 @@ const ResumeSchema = new mongoose.Schema({
   },
   comments: [CommentSchema],
 }, { timestamps: true });
+
+// Encrypt sensitive fields before saving
+ResumeSchema.pre('save', function(next) {
+  if (this.isModified('content')) {
+    this.content = encrypt(this.content);
+  }
+  if (this.isModified('photos') && this.photos) {
+    this.photos = encrypt(this.photos);
+  }
+  if (this.isModified('certifications') && this.certifications) {
+    this.certifications = encrypt(this.certifications);
+  }
+  if (this.isModified('hobbies') && this.hobbies) {
+    this.hobbies = encrypt(this.hobbies);
+  }
+  if (this.isModified('references') && this.references) {
+    this.references = encrypt(this.references);
+  }
+  next();
+});
+
+// Decrypt sensitive fields after finding
+ResumeSchema.post('find', function(docs) {
+  docs.forEach(doc => {
+    if (doc.content) {
+      doc.content = decrypt(doc.content);
+    }
+    if (doc.photos) {
+      doc.photos = decrypt(doc.photos);
+    }
+    if (doc.certifications) {
+      doc.certifications = decrypt(doc.certifications);
+    }
+    if (doc.hobbies) {
+      doc.hobbies = decrypt(doc.hobbies);
+    }
+    if (doc.references) {
+      doc.references = decrypt(doc.references);
+    }
+  });
+});
+
+ResumeSchema.post('findOne', function(doc) {
+  if (doc) {
+    if (doc.content) {
+      doc.content = decrypt(doc.content);
+    }
+    if (doc.photos) {
+      doc.photos = decrypt(doc.photos);
+    }
+    if (doc.certifications) {
+      doc.certifications = decrypt(doc.certifications);
+    }
+    if (doc.hobbies) {
+      doc.hobbies = decrypt(doc.hobbies);
+    }
+    if (doc.references) {
+      doc.references = decrypt(doc.references);
+    }
+  }
+});
 
 const Resume = mongoose.models.Resume || mongoose.model('Resume', ResumeSchema);
 

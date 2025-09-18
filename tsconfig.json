@@ -25,7 +25,10 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/store/*": ["./frontend/store/*"],
+      "@/backend/*": ["./backend/*"],
+      "@/frontend/*": ["./frontend/*"],
+      "@/*": ["./*"]
     }
   },
   "include": [

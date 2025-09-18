@@ -1,8 +1,8 @@
-import dbConnect from '@/lib/dbConnect';
+import dbConnect from '../../../backend/dbConnect';
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import '@/models/Resume'; // Ensure the model is loaded
-import { getLocaleByCode, ILocale } from '@/lib/localeService';
+import '../../../backend/models/Resume'; // Ensure the model is loaded
+import { getLocaleByCode, ILocale } from '../../../src/lib/localeService';
 
 function setSecurityHeaders(res: NextResponse) {
   res.headers.set('X-Content-Type-Options', 'nosniff');

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import ReactFlagsSelect from 'react-flags-select';
-import { useLocale } from '@/lib/locale';
+import { useLocale } from '@/backend/lib/locale';
 
 interface Locale { locale: string; countryCode?: string }
 

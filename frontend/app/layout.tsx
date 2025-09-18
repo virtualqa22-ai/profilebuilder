@@ -1,8 +1,9 @@
-import Header from '@/components/ui/Header';
-import { LanguageProvider } from '@/lib/language';
-import { LocaleProvider } from '@/lib/locale';
+import Header from '../components/ui/Header';
+import { LanguageProvider } from '../../../src/lib/language';
+import { LocaleProvider } from '../../../src/lib/locale';
 
-import SessionProvider from "@/components/ui/SessionProvider";
+import SessionProvider from "../components/ui/SessionProvider";
+import CookieConsent from '../components/CookieConsent';
 
 export const metadata = {
   title: 'CareerVerve',
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <LocaleProvider>
               <Header />
               {children}
+              <CookieConsent />
             </LocaleProvider>
           </LanguageProvider>
         </SessionProvider>

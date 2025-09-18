@@ -1,8 +1,8 @@
- 'use client';
+'use client';
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useLanguage } from '@/lib/language';
+import { useLanguage } from '../../../src/lib/language';
 
 export default function Home() {
   const { t } = useLanguage();

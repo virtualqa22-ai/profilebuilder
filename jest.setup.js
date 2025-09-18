@@ -1,3 +1,5 @@
+require('dotenv').config({ path: '.env.local' });
+
 import '@testing-library/jest-dom';
 
 // Polyfill TextEncoder and TextDecoder for Node.js

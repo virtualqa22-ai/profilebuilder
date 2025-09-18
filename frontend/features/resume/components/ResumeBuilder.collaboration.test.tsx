@@ -2,10 +2,32 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import ResumeBuilder from './ResumeBuilder';
 import { useResumeStore } from '@/store/resumeStore';
-import { LocaleProvider } from '@/lib/locale';
+import { LocaleProvider } from '@/backend/lib/locale';
 
 // Mock the resume store
-jest.mock('@/store/resumeStore');
+jest.mock('@/store/resumeStore', () => ({
+  useResumeStore: jest.fn(),
+}));
+
+// Mock the moduleNameMapper for @/backend/lib/locale
+jest.mock('@/backend/lib/locale', () => {
+  const React = require('react');
+  const LocaleContext = React.createContext({
+    locale: 'en-US',
+    setLocale: jest.fn(),
+    availableLocales: [{ locale: 'en-US' }],
+  });
+
+  const useLocale = () => React.useContext(LocaleContext);
+
+  const LocaleProvider = ({ children }: { children: React.ReactNode }) => (
+    <LocaleContext.Provider value={{ locale: 'en-US', setLocale: jest.fn(), availableLocales: [{ locale: 'en-US' }] }}>
+      {children}
+    </LocaleContext.Provider>
+  );
+
+  return { useLocale, LocaleProvider };
+});
 
 // Mock the fetch function
 global.fetch = jest.fn(() =>
@@ -16,7 +38,7 @@ global.fetch = jest.fn(() =>
 
 describe('ResumeBuilder Collaboration', () => {
   beforeEach(() => {
-    (useResumeStore as jest.Mock).mockReturnValue({
+    (useResumeStore as unknown as jest.Mock).mockReturnValue({
       resume: {
         _id: '123',
         personalInfo: {
