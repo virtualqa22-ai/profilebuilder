@@ -19,8 +19,17 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   await dbConnect();
   const Resume = mongoose.model('Resume');
   const { id } = params;
+
+  // Parse query parameters for selective field retrieval
+  const url = new URL(req.url);
+  const includeContent = url.searchParams.get('includeContent') !== 'false'; // Default to true for individual resume view
+
   try {
-    const resume = await Resume.findById(id);
+    // Define projection based on includeContent parameter
+    // For individual resume view, include content by default but allow exclusion for metadata-only requests
+    const projection = includeContent ? {} : { content: 0, photos: 0, certifications: 0, hobbies: 0, references: 0 };
+
+    const resume = await Resume.findById(id, projection);
     if (!resume) {
       const res = NextResponse.json({ success: false, error: 'Resume not found' }, { status: 404 });
       setSecurityHeaders(res);

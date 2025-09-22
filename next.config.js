@@ -7,7 +7,7 @@ const nextConfig = {
   experimental: {
   },
   webpack(config) {
-    config.resolve.alias['@'] = path.resolve(__dirname, 'frontend');
+    config.resolve.alias['@'] = path.resolve(__dirname, '.');
     return config;
   },
 };

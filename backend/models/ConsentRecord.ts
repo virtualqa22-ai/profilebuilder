@@ -16,34 +16,7 @@
  * - Automatic encryption/decryption middleware
  */
 import mongoose from 'mongoose';
-import CryptoJS from 'crypto-js';
-
-// Encryption key must be provided via environment variable for security
-// This prevents hardcoded secrets and enables key rotation
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
-
-if (!ENCRYPTION_KEY) {
-  throw new Error('ENCRYPTION_KEY environment variable is required for data encryption');
-}
-
-/**
- * Encrypts sensitive data using AES-256 encryption
- * @param text - Plain text to encrypt
- * @returns Encrypted ciphertext as string
- */
-const encrypt = (text: string) => {
-  return CryptoJS.AES.encrypt(text, ENCRYPTION_KEY).toString();
-};
-
-/**
- * Decrypts AES-256 encrypted data
- * @param ciphertext - Encrypted text to decrypt
- * @returns Decrypted plain text
- */
-const decrypt = (ciphertext: string) => {
-  const bytes = CryptoJS.AES.decrypt(ciphertext, ENCRYPTION_KEY);
-  return bytes.toString(CryptoJS.enc.Utf8);
-};
+import { encrypt, decrypt } from '../lib/encryption';
 
 /**
  * ConsentRecord schema definition

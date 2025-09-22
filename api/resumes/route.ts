@@ -6,138 +6,125 @@ import { getLocaleByCode, ILocale } from '../../../backend/lib/localeService';
 import { validateResumeData } from '../../../backend/lib/validations';
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../../../backend/lib/messages';
 import { SECURITY_HEADERS, DEFAULT_LOCALE, MAX_TITLE_LENGTH } from '../../../backend/lib/constants';
+import { applySecurityHeaders, createErrorResponse, handleDatabaseError, handleValidationError, ERROR_CODES } from '../../../backend/lib/errorHandler';
 import { getCacheManager } from '../../../backend/lib/cacheManager';
 
-function setSecurityHeaders(res: NextResponse) {
-  res.headers.set('X-Content-Type-Options', 'nosniff');
-  res.headers.set('X-Frame-Options', 'SAMEORIGIN');
-  res.headers.set('X-XSS-Protection', '1; mode=block');
-  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.headers.set('Permissions-Policy', 'geolocation=(), microphone=()');
-  res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
-}
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // Parse query parameters for pagination and filtering
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = parseInt(url.searchParams.get('limit') || '10');
+    const locale = url.searchParams.get('locale');
+    const sortBy = url.searchParams.get('sortBy') || 'createdAt';
+    const sortOrder = url.searchParams.get('sortOrder') === 'asc' ? 1 : -1;
+    const includeContent = url.searchParams.get('includeContent') === 'true';
+
+    // Validate pagination parameters
+    const validPage = Math.max(1, page);
+    const validLimit = Math.min(Math.max(1, limit), 100); // Max 100 items per page
+
+    // Implement caching strategy with pagination support
     const cacheManager = getCacheManager();
-    const cacheKey = 'resumes:all';
+    const cacheKey = `resumes:list:${validPage}:${validLimit}:${locale || 'all'}:${sortBy}:${sortOrder}:${includeContent}`;
 
     // Try to get from cache first
-    let resumes = await cacheManager.get(cacheKey);
+    let cachedResult = await cacheManager.get(cacheKey);
 
-    if (!resumes) {
-      // Cache miss - fetch from database
-      await dbConnect();
-      const Resume = mongoose.model('Resume');
-      resumes = await Resume.find({});
-
-      // Cache the result for future requests (TTL: 5 minutes for dynamic data)
-      await cacheManager.set(cacheKey, resumes, 300);
+    if (cachedResult) {
+      const res = NextResponse.json(cachedResult);
+      applySecurityHeaders(res);
+      return res;
     }
 
-    const res = NextResponse.json({ success: true, data: resumes });
-    setSecurityHeaders(res);
+    // Cache miss - fetch from database with optimizations
+    await dbConnect();
+    const Resume = mongoose.model('Resume');
+
+    // Build query with optional locale filter
+    const query: any = {};
+    if (locale) {
+      query.locale = locale;
+    }
+
+    // Define projection based on includeContent parameter
+    // For list views, exclude large content field by default for better performance
+    const projection = includeContent ? {} : { content: 0, photos: 0, certifications: 0, hobbies: 0, references: 0 };
+
+    // Calculate skip value for pagination
+    const skip = (validPage - 1) * validLimit;
+
+    // Execute optimized query with pagination and sorting
+    const resumes = await Resume.find(query, projection)
+      .sort({ [sortBy]: sortOrder })
+      .skip(skip)
+      .limit(validLimit)
+      .lean(); // Use lean() for better performance (plain objects instead of mongoose documents)
+
+    // Get total count for pagination metadata
+    const total = await Resume.countDocuments(query);
+
+    const result = {
+      success: true,
+      data: resumes,
+      pagination: {
+        page: validPage,
+        limit: validLimit,
+        total,
+        pages: Math.ceil(total / validLimit),
+        hasNext: validPage * validLimit < total,
+        hasPrev: validPage > 1
+      }
+    };
+
+    // Cache the result for future requests (TTL: 5 minutes for dynamic data)
+    await cacheManager.set(cacheKey, result, 300);
+
+    const res = NextResponse.json(result);
+    applySecurityHeaders(res);
     return res;
   } catch (error) {
-    const res = NextResponse.json({ success: false, error: error.message }, { status: 400 });
-    setSecurityHeaders(res);
-    return res;
+    return handleDatabaseError(error);
   }
 }
 
 export async function POST(req: Request) {
   await dbConnect();
   const Resume = mongoose.model('Resume');
+    // Extract locale from request body, defaulting to en-US for backward compatibility
+    // Locale determines the validation schema and field requirements
   try {
     const body = await req.json();
   const { locale = 'en-US', ...resumeData } = body; // Extract locale, default to en-US
 
     const selectedLocaleData = getLocaleByCode(locale);
     if (!selectedLocaleData) {
-      const res = NextResponse.json({ success: false, error: 'Invalid locale provided' }, { status: 400 });
-      setSecurityHeaders(res);
-      return res;
+      return createErrorResponse('Invalid locale provided', 400, ERROR_CODES.BAD_REQUEST);
     }
 
-    const validateResumeData = (data: any, schema: ILocale) => {
-      const errors: Record<string, string> = {};
-
-      Object.entries(schema.sections).forEach(([sectionKey, section]) => {
-        if (section.fields && section.order) {
-          section.order.forEach((fieldName: string) => {
-            const field = section.fields![fieldName];
-            const inputId = `${sectionKey}-${fieldName}`;
-            if (!field.optional && !data[sectionKey]?.[fieldName]) {
-              errors[inputId] = `${field.label} is required.`;
-            }
-          });
-        } else if (section.placeholder && !section.fields) {
-          const isSectionOptional = (schema.sections as any)[sectionKey]?.optional;
-          if (!isSectionOptional && !data[sectionKey]) {
-            errors[sectionKey] = `${section.label} is required.`;
-          }
-        }
-      });
-
-      // Validate work experience
-      if (data.workExperience) {
-        data.workExperience.forEach((exp: any, index: number) => {
-          schema.sections.workExperience.order.forEach((fieldName: string) => {
-            const field = schema.sections.workExperience.fields![fieldName];
-            const inputId = `workExperience-${index}-${fieldName}`;
-            if (!field.optional && !exp[fieldName]) {
-              errors[inputId] = `${field.label} in Work Experience #${index + 1} is required.`;
-            }
-          });
-        });
-      }
-
-      // Validate education
-      if (data.education) {
-        data.education.forEach((edu: any, index: number) => {
-          schema.sections.education.order.forEach((fieldName: string) => {
-            const field = schema.sections.education.fields![fieldName];
-            const inputId = `education-${index}-${fieldName}`;
-            if (!field.optional && !edu[fieldName]) {
-              errors[inputId] = `${field.label} in Education #${index + 1} is required.`;
-            }
-          });
-        });
-      }
-
-      // Validate optional fields based on locale schema
-      if (schema.optionalFields) {
-        for (const fieldName of ['photos', 'certifications', 'hobbies', 'references']) {
-          const fieldConfig = (schema.optionalFields as any)[fieldName];
-          if (fieldConfig && fieldConfig.enabled && fieldConfig.required && !data[fieldName]) {
-            errors[fieldName] = `${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} is required for this locale.`;
-          }
-        }
-      }
-
-      return errors;
-    };
 
     const validationErrors = validateResumeData(resumeData, selectedLocaleData);
 
     if (Object.keys(validationErrors).length > 0) {
-      const res = NextResponse.json({ success: false, errors: validationErrors }, { status: 400 });
-      setSecurityHeaders(res);
-      return res;
+      return handleValidationError(validationErrors);
     }
 
-  const resume = await Resume.create({ ...resumeData, locale });
+    // Create the resume
+    const resume = await Resume.create({ ...resumeData, locale });
 
-    // Invalidate cache when new resume is created
+    // Invalidate all related cache keys when new resume is created
+    // This ensures data consistency across all cached paginated results
     const cacheManager = getCacheManager();
+    // Delete the old cache key for backward compatibility
     await cacheManager.delete('resumes:all');
+    // Also invalidate user data cache if it exists
+    await cacheManager.delete(`user:data:${body.email || 'unknown'}`);
 
     const res = NextResponse.json({ success: true, data: resume }, { status: 201 });
-    setSecurityHeaders(res);
+    applySecurityHeaders(res);
     return res;
   } catch (error: any) {
-    const res = NextResponse.json({ success: false, error: error.message }, { status: 400 });
-    setSecurityHeaders(res);
-    return res;
+    return handleDatabaseError(error);
   }
 }

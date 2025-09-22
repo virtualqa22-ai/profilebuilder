@@ -1,20 +1,5 @@
 import mongoose from 'mongoose';
-import CryptoJS from 'crypto-js';
-
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
-
-if (!ENCRYPTION_KEY) {
-  throw new Error('ENCRYPTION_KEY environment variable is required');
-}
-
-const encrypt = (text: string) => {
-  return CryptoJS.AES.encrypt(text, ENCRYPTION_KEY).toString();
-};
-
-const decrypt = (ciphertext: string) => {
-  const bytes = CryptoJS.AES.decrypt(ciphertext, ENCRYPTION_KEY);
-  return bytes.toString(CryptoJS.enc.Utf8);
-};
+import { encrypt, decrypt } from '../lib/encryption';
 
 const CommentSchema = new mongoose.Schema({
   field: {
@@ -63,6 +48,19 @@ const ResumeSchema = new mongoose.Schema({
   },
   comments: [CommentSchema],
 }, { timestamps: true });
+
+// Add database indexes for query optimization
+// Index on locale for filtering resumes by locale
+ResumeSchema.index({ locale: 1 });
+
+// Index on createdAt for sorting by creation date (descending for recent first)
+ResumeSchema.index({ createdAt: -1 });
+
+// Index on updatedAt for sorting by last modification
+ResumeSchema.index({ updatedAt: -1 });
+
+// Compound index for locale + createdAt for efficient filtering and sorting
+ResumeSchema.index({ locale: 1, createdAt: -1 });
 
 // Encrypt sensitive fields before saving
 ResumeSchema.pre('save', function(next) {

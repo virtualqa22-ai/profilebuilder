@@ -73,7 +73,7 @@ export const handleDatabaseError = (error: any): NextResponse => {
     ERROR_MESSAGES.DATABASE_ERROR,
     500,
     ERROR_CODES.DATABASE_ERROR,
-    process.env.NODE_ENV === 'development' ? error.message : undefined
+    
   );
 };
 
@@ -114,4 +114,26 @@ export const handleUnauthorizedError = (): NextResponse => {
     401,
     ERROR_CODES.UNAUTHORIZED
   );
+};
+
+/**
+ * Applies comprehensive security headers to a NextResponse for enhanced protection
+ *
+ * This function applies all security headers defined in SECURITY_HEADERS constant,
+ * which includes headers for XSS protection, content type sniffing prevention,
+ * referrer policy, frame options, permissions policy, and HTTP Strict Transport Security.
+ *
+ * Security benefits:
+ * - Prevents XSS attacks through content sniffing and frame embedding
+ * - Enforces HTTPS and secure referrer policies
+ * - Restricts potentially dangerous permissions like geolocation and microphone access
+ *
+ * @param response - The NextResponse object to apply security headers to
+ * @returns The response with all security headers applied
+ */
+export const applySecurityHeaders = (response: NextResponse): NextResponse => {
+  Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+    response.headers.set(key.toLowerCase().replace(/_/g, '-'), value);
+  });
+  return response;
 };

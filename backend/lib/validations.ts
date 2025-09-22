@@ -23,6 +23,7 @@
  */
 
 import { ILocale } from './localeService';
+import { MAX_FIELD_LENGTH } from './constants';
 
 // Type definitions for validation
 
@@ -321,6 +322,78 @@ export const validateSecureInput = (data: InputData, schema: ValidationSchema): 
       }
     }
   });
+
+  return errors;
+};
+
+/**
+ * Validates cover letter data with comprehensive business rules and security checks
+ *
+ * Performs validation on all cover letter fields including required field checks,
+ * email format validation, phone number validation, template selection validation,
+ * and length constraints. All input is sanitized for security.
+ *
+ * Required fields: name, email, recipientName, companyName, body, template
+ * Optional fields: address, phone, date, recipientTitle, companyAddress, salutation, closing, signature
+ *
+ * Validation rules:
+ * - Email: Must be valid format with security checks
+ * - Phone: Must match international phone number pattern (optional)
+ * - Template: Must be 'classic' or 'modern'
+ * - Name: Max length 500 characters
+ * - Body: Max length 2000 characters
+ *
+ * @param data - The cover letter data object to validate
+ * @returns Object containing field-specific validation error messages, empty if valid
+ */
+export const validateCoverLetterData = (data: {
+  name?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  date?: string;
+  recipientName?: string;
+  recipientTitle?: string;
+  companyName?: string;
+  companyAddress?: string;
+  salutation?: string;
+  body?: string;
+  closing?: string;
+  signature?: string;
+  template?: string;
+}): ValidationResult => {
+  const errors: Record<string, string> = {};
+
+  // Required fields
+  const requiredFields = ['name', 'email', 'recipientName', 'companyName', 'body', 'template'];
+  for (const field of requiredFields) {
+    if (!data[field as keyof typeof data]) {
+      errors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} is required.`;
+    }
+  }
+
+  // Email validation
+  if (data.email && !validateEmailSecure(data.email)) {
+    errors.email = 'Invalid email format.';
+  }
+
+  // Phone validation if provided
+  if (data.phone && !validatePhone(data.phone)) {
+    errors.phone = 'Invalid phone number format.';
+  }
+
+  // Template validation
+  if (data.template && !['classic', 'modern'].includes(data.template)) {
+    errors.template = 'Invalid template. Must be "classic" or "modern".';
+  }
+
+  // Length validations
+  if (data.name && data.name.length > MAX_FIELD_LENGTH) {
+    errors.name = `Name exceeds maximum length of ${MAX_FIELD_LENGTH} characters.`;
+  }
+  if (data.body && data.body.length > 2000) {
+    errors.body = 'Body exceeds maximum length of 2000 characters.';
+  }
 
   return errors;
 };

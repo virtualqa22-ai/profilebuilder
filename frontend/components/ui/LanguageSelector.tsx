@@ -1,6 +1,6 @@
 "use client";
 
-import { useLanguage } from '@/lib/language';
+import { useLanguage } from '@/frontend/lib/language';
 
 export default function LanguageSelector() {
   const { lang, setLang } = useLanguage();

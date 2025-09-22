@@ -19,22 +19,7 @@
  * - Immutable operations prevent tampering
  */
 import mongoose from 'mongoose';
-import CryptoJS from 'crypto-js';
-
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
-
-if (!ENCRYPTION_KEY) {
-  throw new Error('ENCRYPTION_KEY environment variable is required');
-}
-
-const encrypt = (text: string) => {
-  return CryptoJS.AES.encrypt(text, ENCRYPTION_KEY).toString();
-};
-
-const decrypt = (ciphertext: string) => {
-  const bytes = CryptoJS.AES.decrypt(ciphertext, ENCRYPTION_KEY);
-  return bytes.toString(CryptoJS.enc.Utf8);
-};
+import { encrypt, decrypt } from '../lib/encryption';
 
 /**
  * AuditLog schema definition

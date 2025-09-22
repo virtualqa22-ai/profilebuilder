@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useLanguage } from '../../../src/lib/language';
+import { useLanguage } from '@/frontend/lib/language';
 
 export default function Home() {
   const { t } = useLanguage();

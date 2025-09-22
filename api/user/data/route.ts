@@ -22,11 +22,24 @@ export async function GET() {
       // Cache miss - fetch from database
       await connectToDatabase();
       const user = await User.findOne({ email: session.user.email });
-      const resumes = await Resume.find({}); // Assuming all resumes are user's, but in real app, filter by user
+
+      // TODO: Add user field to Resume model for proper data isolation
+      // Currently fetching all resumes due to missing user association
+      // This is a security and performance issue that should be addressed
+      const resumes = await Resume.find({})
+        .select('title locale version createdAt updatedAt') // Only fetch metadata for user data export
+        .sort({ createdAt: -1 })
+        .limit(50) // Limit to prevent excessive data export
+        .lean();
 
       userData = {
         user,
         resumes,
+        _metadata: {
+          resumeCount: resumes.length,
+          limited: resumes.length >= 50, // Indicate if results were truncated
+          note: 'Resume data is limited to metadata only for performance and security'
+        }
       };
 
       // Cache the result for future requests (TTL: 10 minutes for user data)

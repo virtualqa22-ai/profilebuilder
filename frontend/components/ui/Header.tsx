@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import LanguageSelector from './LanguageSelector';
-import { useLanguage } from '@/lib/language';
+import { useLanguage } from '@/frontend/lib/language';
 
 import { useSession, signOut } from "next-auth/react";
 

@@ -9,7 +9,24 @@ import { getLocaleByCode } from '../../../backend/lib/localeService';
 jest.mock('../../../frontend/store/resumeStore');
 jest.mock('../../../backend/lib/localeService');
 jest.mock('../../../backend/lib/locale', () => ({
-  useLocale: () => ({ locale: 'en-US' }),
+  useLocale: () => ({
+    locale: 'en-US',
+    availableLocales: [
+      { locale: 'en-US', name: 'English (US)', dateFormat: 'MM/DD/YYYY' },
+      { locale: 'en-GB', name: 'English (UK)', dateFormat: 'DD/MM/YYYY' }
+    ]
+  }),
+}));
+jest.mock('../../../frontend/components/ui/LocaleSelector', () => ({
+  __esModule: true,
+  default: () => <div>Mocked LocaleSelector</div>,
+}));
+
+// Mock react-dom/client for React 18
+jest.mock('react-dom/client', () => ({
+  createRoot: jest.fn(() => ({
+    render: jest.fn(),
+  })),
 }));
 
 // Mock fetch
@@ -165,7 +182,7 @@ describe('ResumeBuilder Component', () => {
 
     it('should render skills section', () => {
       render(<ResumeBuilder locale="en-US" />);
-      expect(screen.getByText('Skills')).toBeInTheDocument();
+      expect(screen.getAllByText('Skills')).toHaveLength(2);
     });
 
     it('should show loading when locale data is not available', () => {

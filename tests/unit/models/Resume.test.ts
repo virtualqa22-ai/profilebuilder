@@ -25,6 +25,11 @@ jest.mock('crypto-js', () => ({
 describe('Resume Model', () => {
   let mockCryptoJS: any;
 
+  beforeAll(() => {
+    // Set up test environment with ENCRYPTION_KEY
+    process.env.ENCRYPTION_KEY = 'test-encryption-key-for-resume-tests';
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockCryptoJS = require('crypto-js');

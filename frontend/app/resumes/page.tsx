@@ -1,10 +1,11 @@
  'use client';
 
-import ResumeBuilder from '@/features/resume/components/ResumeBuilder';
-import LivePreview from '@/features/resume/components/LivePreview';
+import ResumeBuilder from '@/frontend/features/resume/components/ResumeBuilder';
+import LivePreview from '@/frontend/features/resume/components/LivePreview';
 import { useState, useEffect } from 'react';
-import LocaleSelector from '@/components/ui/LocaleSelector';
-import { useLocale } from '@/lib/locale';
+import LocaleSelector from '@/frontend/components/ui/LocaleSelector';
+import { useLocale } from '@/backend/lib/locale';
+import ErrorBoundary from '@/frontend/components/ui/ErrorBoundary';
 
 interface Resume {
   _id: string;
@@ -39,7 +40,9 @@ export default function ResumesPage() {
         <>
           <div className="flex w-full max-w-7xl gap-8 mx-auto">
             <div className="flex-1">
-              <ResumeBuilder locale={selectedLocale} />
+              <ErrorBoundary>
+                <ResumeBuilder locale={selectedLocale} />
+              </ErrorBoundary>
               {message && <p className="mt-4 text-center text-brand-coral">{message}</p>}
             </div>
             <div className="flex-1 hidden md:block">

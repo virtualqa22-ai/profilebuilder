@@ -24,6 +24,39 @@ The backend module contains the server-side logic for the CareerVerve applicatio
 - **Resume Parsing**: Utility for parsing resume data in `backend/lib/resumeParser.ts`.
 - **Centralized Files**: Constants, messages, API endpoints, and validations are centralized for DRY compliance.
 
+## Database Models
+
+The backend uses MongoDB with Mongoose ODM for data modeling. All models include proper indexing, encryption for sensitive fields, and compliance features.
+
+- **User**: Stores user authentication data and privacy preferences. Fields: email (unique), name (optional), privacyMode (boolean for cloud storage opt-in).
+- **Resume**: Manages resume content with encryption for sensitive data. Includes versioning, comments, and optional fields like photos, certifications, hobbies, references. Automatic encryption/decryption for content fields.
+- **SecurityEvent**: Append-only immutable log for security events. Tracks event types, severity, correlation IDs, encrypted IP/user agent data. Prevents updates/deletes for compliance.
+- **ConsentRecord**: Manages GDPR consent records with encrypted audit data. Tracks consent purposes, status changes, and expiration. Immutable once granted.
+- **AuditLog**: Immutable audit trail for all data processing activities. Logs actions on resources with encrypted IP/user agent. Append-only for forensic integrity.
+- **ErasureRequest**: Tracks GDPR right-to-erasure requests. Manages request lifecycle with unique IDs, status tracking, and 30-day completion windows.
+
+## Library Utilities
+
+Centralized utilities provide reusable functionality across the backend:
+
+- **aiSecurity.ts**: AI-specific security measures and prompt injection protection.
+- **apiEndpoints.ts**: Centralized API endpoint definitions for consistency.
+- **cacheManager.ts**: Caching layer for performance optimization (see `backend/lib/README-caching.md`).
+- **constants.ts**: Application-wide constants and enumerations.
+- **databaseManager.ts**: Database connection and query utilities.
+- **encryption.ts**: AES-256 encryption/decryption for sensitive data using environment-based keys.
+- **errorHandler.ts**: Standardized error handling with structured error objects and codes.
+- **locale.tsx**: React component for locale handling.
+- **localeService.ts**: Internationalization services and locale data management.
+- **logger.ts**: Centralized logging with correlation IDs for request tracing.
+- **messages.ts**: Centralized error and success messages for consistency.
+- **metrics.ts**: Performance metrics collection compatible with Prometheus/Grafana.
+- **privacyCompliance.ts**: GDPR compliance utilities and data processing validations.
+- **resumeParser.ts**: Resume data parsing and validation utilities.
+- **securityLogger.ts**: Security event logging (see `backend/lib/README-security-logging.md`).
+- **validations.ts**: Input validation functions and schemas.
+- **withHelmet.ts**: Security middleware wrapper using Helmet for HTTP headers.
+
 ## Dependencies
 
 ### Runtime Dependencies

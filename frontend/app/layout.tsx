@@ -1,6 +1,6 @@
 import Header from '../components/ui/Header';
-import { LanguageProvider } from '../../../src/lib/language';
-import { LocaleProvider } from '../../../src/lib/locale';
+import { LanguageProvider } from '@/frontend/lib/language';
+import { LocaleProvider } from '@/backend/lib/locale';
 
 import SessionProvider from "../components/ui/SessionProvider";
 import CookieConsent from '../components/CookieConsent';

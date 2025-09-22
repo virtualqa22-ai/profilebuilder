@@ -24,6 +24,101 @@ The API module contains Next.js API routes that handle server-side requests for 
 - **Security**: Input validation, CORS handling, and security headers from backend middleware.
 - **Testing**: Includes unit and integration tests with Jest and Supertest.
 
+## API Endpoints
+
+The API provides RESTful endpoints for resume management, file operations, and system monitoring. All endpoints include security headers and follow consistent error response formats.
+
+### Health Check
+- **GET /api/health**
+  - **Description**: Comprehensive health check for service availability, database connectivity, and system metrics.
+  - **Response**: JSON with status, uptime, memory usage, and database health.
+  - **Status Codes**: 200 (healthy), 500 (unhealthy).
+
+### Authentication
+- **GET/POST /api/auth/[...nextauth]**
+  - **Description**: NextAuth.js integration for user authentication (login, logout, session management).
+  - **Methods**: Handled by NextAuth.js configuration.
+
+### Resume Management
+- **GET /api/resumes**
+  - **Description**: Retrieve paginated list of resumes with optional filtering by locale.
+  - **Query Parameters**: page, limit, locale, sortBy, sortOrder, includeContent.
+  - **Response**: JSON with resume data array and pagination metadata.
+- **POST /api/resumes**
+  - **Description**: Create a new resume with validation based on locale schema.
+  - **Body**: Resume data including locale, title, content, work experience, education, etc.
+  - **Response**: Created resume object.
+  - **Status Codes**: 201 (created), 400 (validation error).
+- **GET /api/resumes/[id]**
+  - **Description**: Retrieve a specific resume by ID.
+  - **Query Parameters**: includeContent (default true).
+  - **Response**: Resume object.
+  - **Status Codes**: 200 (success), 404 (not found).
+- **PUT /api/resumes/[id]**
+  - **Description**: Update an existing resume with version increment.
+  - **Body**: Updated resume data.
+  - **Response**: Updated resume object.
+  - **Status Codes**: 200 (success), 400 (validation error), 404 (not found).
+- **DELETE /api/resumes/[id]**
+  - **Description**: Delete a resume by ID.
+  - **Response**: Success confirmation.
+  - **Status Codes**: 200 (success), 404 (not found).
+
+### Comments
+- **GET/POST /api/resumes/[id]/comments**
+  - **Description**: Manage comments on resume fields.
+  - **Methods**: GET (retrieve comments), POST (add comment).
+  - **Body (POST)**: field, text, author.
+
+### File Operations
+- **POST /api/upload**
+  - **Description**: Upload files (images, PDFs) with validation and sanitization.
+  - **Body**: FormData with file.
+  - **Validation**: File size (5MB max), type (images/PDFs), security checks.
+  - **Response**: File URL.
+  - **Status Codes**: 200 (success), 400 (validation error).
+- **POST /api/generate-pdf**
+  - **Description**: Generate PDF from resume data using Puppeteer.
+  - **Body**: Resume data object.
+  - **Response**: PDF blob with attachment headers.
+  - **Status Codes**: 200 (success), 400 (error).
+- **POST /api/import-pdf**
+  - **Description**: Parse PDF and extract resume data.
+  - **Body**: FormData with PDF file.
+  - **Response**: Extracted resume data.
+- **POST /api/generate-cover-letter-pdf**
+  - **Description**: Generate PDF cover letter.
+- **POST /api/generate-cover-letter-docx**
+  - **Description**: Generate DOCX cover letter.
+
+### Job Description Processing
+- **POST /api/jd-parser**
+  - **Description**: Parse job description text for matching analysis.
+  - **Body**: Job description text.
+  - **Response**: Parsed job requirements.
+
+### Cover Letters
+- **GET/POST /api/cover-letter**
+  - **Description**: Generate and manage cover letters.
+
+### Localization
+- **GET /api/locales**
+  - **Description**: Retrieve available locales.
+- **GET /api/locales/[locale]**
+  - **Description**: Get specific locale configuration.
+
+### User Management
+- **GET /api/user/data**
+  - **Description**: Retrieve user-specific data.
+- **GET/PUT /api/user/settings**
+  - **Description**: Manage user settings and privacy preferences.
+- **POST /api/user/delete**
+  - **Description**: Handle user data deletion requests.
+
+### Metrics
+- **GET /api/metrics**
+  - **Description**: Expose application metrics for monitoring.
+
 ## Dependencies
 
 ### Runtime Dependencies

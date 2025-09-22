@@ -26,6 +26,54 @@ The frontend module is the user-facing part of the CareerVerve application, buil
 - **Styling**: Tailwind CSS with PostCSS configuration, avoiding inline CSS for maintainability.
 - **Security**: Integrates with NextAuth for session management and security headers via next-safe.
 
+## Critical Components
+
+### ResumeBuilder Component
+
+The ResumeBuilder component is the core of the resume creation functionality, featuring complex state management and dynamic form handling.
+
+**Key Features:**
+- **State Management**: Uses Zustand store (`resumeStore.ts`) for centralized resume data management with actions for updating personal info, work experience, education, skills, etc.
+- **Dynamic Forms**: Supports locale-based dynamic form fields with optional/required validation. Handles multiple work experience and education entries with add/remove functionality.
+- **File Uploads**: Integrates with `/api/upload` for handling photos and certifications with privacy toggles.
+- **Comments System**: Inline commenting on form fields with threaded discussions stored via `/api/resumes/[id]/comments`.
+- **Validation**: Comprehensive client-side validation with error display, ensuring required fields are filled before PDF generation.
+- **PDF Generation**: Exports resume data to PDF via `/api/generate-pdf` with validation checks.
+- **Import Functionality**: Imports resume data from PDF using `/api/import-pdf`.
+- **Auto-save**: Debounced auto-saving with visual status indicators (saving/saved/error).
+- **Internationalization**: Locale-aware rendering using `getLocaleByCode` and context locale fallback.
+- **Accessibility**: ARIA labels, keyboard navigation, and screen reader support.
+
+**State Complexity:**
+- Manages multiple arrays (workExperience, education) with individual item updates.
+- Handles optional fields visibility toggles and validation states.
+- Tracks comment threads and file upload states.
+- Coordinates with backend for real-time data persistence.
+
+### ErrorBoundary Component
+
+The ErrorBoundary component provides robust error handling for the React component tree.
+
+**Key Features:**
+- **Error Catching**: Catches JavaScript errors in child components using React's error boundary API.
+- **Fallback UI**: Displays user-friendly error messages instead of white screens.
+- **Retry Mechanism**: Allows users to retry failed operations with state reset.
+- **Development Mode**: Shows detailed error information in development environment.
+- **Logging**: Logs errors to console (integrates with backend logger in production).
+- **Custom Fallbacks**: Accepts custom fallback components as props for specific error handling.
+
+**Usage:**
+```tsx
+<ErrorBoundary>
+  <ComplexComponent />
+</ErrorBoundary>
+```
+
+**Error Handling Strategy:**
+- Prevents application crashes by isolating component failures.
+- Provides graceful degradation with retry options.
+- Maintains user experience continuity during unexpected errors.
+
 ## Dependencies
 
 ### Runtime Dependencies

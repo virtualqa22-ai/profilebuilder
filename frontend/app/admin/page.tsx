@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import localesData from '@/data/locales.json';
+import localesData from '@/backend/data/locales.json';
 
 type Locale = {
   country: string;

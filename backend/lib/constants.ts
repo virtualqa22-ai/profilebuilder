@@ -76,6 +76,97 @@ export const OPTIONAL_FIELDS = [
   'references',
 ] as const;
 
+/**
+ * Cover Letter Templates
+ *
+ * Predefined templates for generating professional cover letters in different styles.
+ * Each template is a function that takes cover letter data and returns a formatted string.
+ *
+ * Available templates:
+ * - classic: Traditional cover letter format with standard business letter structure
+ * - modern: Contemporary format with condensed header and professional styling
+ *
+ * Template data structure includes:
+ * - Personal information (name, address, phone, email)
+ * - Date and recipient details
+ * - Company information
+ * - Letter content (salutation, body, closing, signature)
+ *
+ * All templates ensure consistent formatting and professional appearance.
+ */
+export const COVER_LETTER_TEMPLATES = {
+  classic: (data: {
+    name: string;
+    address: string;
+    phone: string;
+    email: string;
+    date: string;
+    recipientName: string;
+    recipientTitle: string;
+    companyName: string;
+    companyAddress: string;
+    salutation: string;
+    body: string;
+    closing: string;
+    signature: string;
+  }) => `${data.name}
+${data.address}
+${data.phone}
+${data.email}
+
+${data.date}
+
+${data.recipientName}
+${data.recipientTitle}
+${data.companyName}
+${data.companyAddress}
+
+${data.salutation}
+
+${data.body}
+
+${data.closing}
+
+${data.signature}`,
+
+  modern: (data: {
+    name: string;
+    address: string;
+    phone: string;
+    email: string;
+    date: string;
+    recipientName: string;
+    recipientTitle: string;
+    companyName: string;
+    companyAddress: string;
+    salutation: string;
+    body: string;
+    closing: string;
+    signature: string;
+  }) => `[MODERN STYLE HEADER]
+
+${data.name}
+${data.address}
+${data.phone} | ${data.email}
+
+${data.date}
+
+${data.recipientName}
+${data.recipientTitle}
+${data.companyName}
+${data.companyAddress}
+
+${data.salutation}
+
+${data.body}
+
+${data.closing}
+
+${data.signature}
+
+[END OF COVER LETTER]`,
+} as const;
+
 // Pagination Constants
 export const DEFAULT_PAGE_SIZE = 10;
 export const MAX_PAGE_SIZE = 100;

@@ -4,6 +4,7 @@ import { getLocaleByCode, ILocale } from '@/backend/lib/localeService';
 import { useLocale } from '@/backend/lib/locale';
 import Comment from './Comment';
 import LocaleSelector from '@/frontend/components/ui/LocaleSelector';
+import ErrorBoundary from '@/frontend/components/ui/ErrorBoundary';
 
 interface ResumeBuilderProps {
   locale: string;
@@ -387,7 +388,9 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
   return (
     <div className="p-4 border rounded-lg shadow-md bg-white text-black">
       <div className="mb-4">
-        <LocaleSelector />
+        <ErrorBoundary>
+          <LocaleSelector />
+        </ErrorBoundary>
       </div>
       <h2 className="text-2xl font-bold mb-4">Resume Builder</h2>
       <div className="text-right text-sm mb-2" aria-live="polite">
