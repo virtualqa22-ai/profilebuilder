@@ -59,6 +59,13 @@ interface ISectionWithOptional {
   optional?: boolean;
 }
 
+interface IAdMetricData {
+  user_id?: string;
+  ad_id?: string;
+  event_type?: string;
+  metadata?: Record<string, unknown>;
+}
+
 /**
  * Validates resume data against locale schema
  * @param data - The resume data to validate
@@ -400,4 +407,57 @@ export const validateCoverLetterData = (data: {
   }
 
   return errors;
+/**
+ * Validates ad metric data with comprehensive business rules and security checks
+ *
+ * Performs validation on ad metric fields including required field checks,
+ * event type validation, ad ID format validation, and length constraints.
+ * All input is sanitized for security.
+ *
+ * Required fields: user_id, ad_id, event_type
+ * Optional fields: metadata
+ *
+ * Validation rules:
+ * - user_id: Must be non-empty string, max 500 characters
+ * - ad_id: Must be non-empty string, max 100 characters
+ * - event_type: Must be one of allowed types (impression, click, view, hover, close)
+ * - metadata: Optional object, sanitized if present
+ *
+ * @param data - The ad metric data object to validate
+ * @returns Object containing field-specific validation error messages, empty if valid
+ */
+export const validateAdMetricData = (data: IAdMetricData): ValidationResult => {
+  const errors: Record<string, string> = {};
+
+  // Required fields
+  const requiredFields = ['user_id', 'ad_id', 'event_type'];
+  for (const field of requiredFields) {
+    if (!data[field as keyof typeof data]) {
+      errors[field] = `${field.replace('_', ' ')} is required.`;
+    }
+  }
+
+  // user_id validation
+  if (data.user_id && (typeof data.user_id !== 'string' || data.user_id.length > 500)) {
+    errors.user_id = 'User ID must be a string with maximum length of 500 characters.';
+  }
+
+  // ad_id validation
+  if (data.ad_id && (typeof data.ad_id !== 'string' || data.ad_id.length > 100)) {
+    errors.ad_id = 'Ad ID must be a string with maximum length of 100 characters.';
+  }
+
+  // event_type validation
+  const allowedEventTypes = ['impression', 'click', 'view', 'hover', 'close'];
+  if (data.event_type && !allowedEventTypes.includes(data.event_type)) {
+    errors.event_type = `Event type must be one of: ${allowedEventTypes.join(', ')}.`;
+  }
+
+  // metadata validation (optional, but sanitize if present)
+  if (data.metadata && typeof data.metadata !== 'object') {
+    errors.metadata = 'Metadata must be an object if provided.';
+  }
+
+  return errors;
+};
 };

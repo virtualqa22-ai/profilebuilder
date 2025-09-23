@@ -21,6 +21,7 @@ The CareerVerve API provides comprehensive endpoints for resume and cover letter
 - [DOCX Import and Generation](#docx-import-and-generation)
 - [Locales](#locales)
 - [Metrics](#metrics)
+- [Ads](#ads)
 - [Error Codes](#error-codes)
 - [Rate Limiting](#rate-limiting)
 - [Security](#security)
@@ -642,6 +643,120 @@ http_request_duration_seconds_sum{method="GET",route="/api/health"} 15.5
 http_request_duration_seconds_count{method="GET",route="/api/health"} 150
 ```
 
+## Ads
+
+The Ads endpoints provide functionality for tracking advertisement interactions and retrieving ad configuration settings. These endpoints prioritize user privacy through data anonymization and implement comprehensive security measures.
+
+### POST /api/ads/metrics
+
+Tracks advertisement interaction metrics with privacy protection and rate limiting.
+
+**Content-Type:** `application/json`
+
+**Request Body:**
+```json
+{
+  "user_id": "string (required) - User identifier to be anonymized",
+  "ad_id": "string (required) - Advertisement identifier",
+  "event_type": "string (required) - Type of interaction: 'impression', 'click', 'view', 'hover', 'close'",
+  "metadata": "object (optional) - Additional event data"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Metric tracked successfully"
+}
+```
+
+**Response (400 - Validation Error):**
+```json
+{
+  "success": false,
+  "error": "Validation failed",
+  "code": "VALIDATION_ERROR",
+  "details": {
+    "user_id": "User ID is required",
+    "ad_id": "Ad ID is required"
+  }
+}
+```
+
+**Response (429 - Rate Limited):**
+```json
+{
+  "success": false,
+  "error": "Rate limit exceeded. Please try again later.",
+  "code": "BAD_REQUEST"
+}
+```
+
+**Request Example:**
+```bash
+curl -X POST "https://api.careerverve.com/api/ads/metrics" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "user123",
+    "ad_id": "ad-banner-001",
+    "event_type": "impression",
+    "metadata": {
+      "size": "banner",
+      "position": "sidebar"
+    }
+  }'
+```
+
+### GET /api/ads/config
+
+Retrieves advertisement configuration settings from environment variables.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "adsEnabled": true,
+    "adProviders": ["google-adsense", "custom-provider"],
+    "maxAdsPerPage": 3
+  }
+}
+```
+
+**Request Example:**
+```bash
+curl -X GET "https://api.careerverve.com/api/ads/config"
+```
+
+**Ad Configuration Schema:**
+- `adsEnabled`: boolean - Whether ads are enabled globally
+- `adProviders`: array of strings - List of configured ad providers (empty if ads disabled)
+- `maxAdsPerPage`: number - Maximum number of ads allowed per page (0-10)
+
+### Security Notes
+
+- **User Anonymization:** User IDs are hashed using SHA-256 with a salt before storage
+- **Rate Limiting:** 100 requests per minute per anonymized user ID
+- **Input Validation:** All inputs are validated and sanitized
+- **No Data Retrieval:** Metrics endpoint is write-only for privacy protection
+- **Configuration Security:** Ad settings sourced from secure environment variables
+
+### Rate Limiting
+
+| Endpoint | Limit | Window |
+|----------|-------|--------|
+| `/api/ads/metrics` | 100 req/min | 1 minute per user |
+| `/api/ads/config` | 1000 req/min | 1 minute |
+
+### Ethical Considerations
+
+- **Privacy Protection:** User data is anonymized and cannot be reverse-engineered
+- **Non-Intrusive Ads:** Lazy loading prevents performance impact on page load
+- **User Consent:** Ads are only served when explicitly enabled in configuration
+- **Transparency:** Clear fallback messages when adblock is detected
+- **Fairness:** No discriminatory targeting based on protected characteristics
+
 ## Error Codes
 
 All API errors follow a standardized format:
@@ -805,6 +920,13 @@ curl -X POST "https://api.careerverve.com/api/upload" \
 - Enhanced security for document processing
 - Ethical considerations for sensitive resume data handling
 
+### Version 1.2.0 (Phase 13)
+- Added advertisement tracking and configuration endpoints
+- Ad metrics tracking with user privacy protection via anonymization
+- Ad configuration management via environment variables
+- Frontend AdComponent with lazy loading and adblock detection
+- Ethical ad serving with user consent and non-intrusive placement
+
 ## Support
 
 For API support, please contact:
@@ -823,6 +945,8 @@ For API support, please contact:
 | `/api/import-docx` | 10 req/hour | 1 hour |
 | `/api/generate-docx` | 50 req/hour | 1 hour |
 | `/api/user/*` | 50 req/min | 1 minute |
+| `/api/ads/metrics` | 100 req/min | 1 minute per user |
+| `/api/ads/config` | 1000 req/min | 1 minute |
 
 ## Webhooks
 

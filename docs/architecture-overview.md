@@ -6,11 +6,12 @@ The CareerVerve application currently follows a monolithic architecture built on
 
 ### Key Components
 
-- **Frontend Layer**: React-based UI with Next.js App Router, featuring components for resume building, internationalization, and state management via Zustand.
-- **Backend Layer**: Server-side logic including Mongoose models for MongoDB, utility libraries for validations and error handling, and middleware for security and rate limiting.
-- **API Layer**: Next.js API routes handling authentication (NextAuth), CRUD operations for resumes and cover letters, file uploads, PDF generation using Puppeteer, and DOCX import/export using mammoth and docx libraries.
-- **Database**: Single MongoDB instance with encryption for sensitive fields.
+- **Frontend Layer**: React-based UI with Next.js App Router, featuring components for resume building, internationalization, state management via Zustand, and AdComponent for privacy-compliant advertisement serving.
+- **Backend Layer**: Server-side logic including Mongoose models for MongoDB, utility libraries for validations and error handling, middleware for security and rate limiting, and ad metrics tracking with user anonymization.
+- **API Layer**: Next.js API routes handling authentication (NextAuth), CRUD operations for resumes and cover letters, file uploads, PDF generation using Puppeteer, DOCX import/export using mammoth and docx libraries, and ad metrics tracking and configuration endpoints.
+- **Database**: Single MongoDB instance with encryption for sensitive fields, including anonymized ad metrics collections.
 - **Authentication**: NextAuth.js for session management and OAuth providers.
+- **Ad Service**: Integrated ad serving system with Google AdSense integration, lazy loading, adblock detection, and privacy-focused metrics collection.
 - **Testing**: Jest for unit/integration tests, Playwright for e2e tests.
 - **Deployment**: Monolithic build and deployment via Next.js.
 
@@ -43,6 +44,7 @@ To address scalability, maintainability, and resilience, the architecture will e
 - **Resume Service**: Handles resume creation, storage, and retrieval. Includes parsing (PDF, DOCX), template management, and document generation (PDF, DOCX).
 - **Cover Letter Service**: Generates and manages cover letters, with PDF export capabilities.
 - **JD Parser Service**: Parses job descriptions for matching algorithms.
+- **Ad Service**: Manages advertisement serving, metrics tracking with privacy protection, and configuration management. Includes adblock detection and ethical ad placement.
 - **Notification Service**: Handles email/SMS notifications (future addition).
 - **API Gateway**: Nginx or Kong for routing, authentication, and rate limiting across services.
 - **Shared Libraries**: Common utilities (validations, error handling) as shared packages.
@@ -57,6 +59,7 @@ To address scalability, maintainability, and resilience, the architecture will e
 ├── [User Service] ── [User DB]
 ├── [Resume Service] ── [Resume DB]
 ├── [Cover Letter Service] ── [Cover Letter DB]
+├── [Ad Service] ── [Ad Metrics DB]
 └── [JD Parser Service] ── [Parser DB]
 ```
 
@@ -83,9 +86,11 @@ To address scalability, maintainability, and resilience, the architecture will e
 
 ## Ethical Considerations
 
-- **Privacy**: Microservices enable better data isolation, reducing exposure in breaches. Encryption and access controls are enforced per service.
-- **Fairness**: Service design ensures neutral algorithms; separate services prevent bias propagation.
-- **Data Minimization**: Each service collects only necessary data, minimizing retention and processing.
+- **Privacy**: Microservices enable better data isolation, reducing exposure in breaches. Encryption and access controls are enforced per service. Ad metrics use SHA-256 anonymization to protect user identities.
+- **Fairness**: Service design ensures neutral algorithms; separate services prevent bias propagation. Ad serving avoids discriminatory targeting based on protected characteristics.
+- **Data Minimization**: Each service collects only necessary data, minimizing retention and processing. Ad metrics are write-only with no retrieval capabilities.
+- **Non-Intrusive Ads**: Lazy loading and graceful adblock handling ensure ads do not degrade user experience.
+- **User Consent**: Ads are only served when explicitly enabled in configuration, respecting user preferences.
 
 ## Compliance Notes
 

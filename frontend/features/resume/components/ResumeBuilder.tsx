@@ -5,6 +5,7 @@ import { useLocale } from '@/backend/lib/locale';
 import Comment from './Comment';
 import LocaleSelector from '@/frontend/components/ui/LocaleSelector';
 import ErrorBoundary from '@/frontend/components/ui/ErrorBoundary';
+import AdComponent from '@/frontend/components/AdComponent';
 
 interface ResumeBuilderProps {
   locale: string;
@@ -666,6 +667,14 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
         >
           Export to PDF
         </button>
+      </div>
+
+      {/* Non-intrusive ad placement in footer */}
+      <div className="mt-8 flex justify-center border-t pt-4">
+        <AdComponent
+          adUnitId={process.env.NEXT_PUBLIC_ADMOB_BANNER_UNIT_ID || ''}
+          size="banner"
+        />
       </div>
     </div>
   );
