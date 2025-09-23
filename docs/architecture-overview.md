@@ -8,7 +8,7 @@ The CareerVerve application currently follows a monolithic architecture built on
 
 - **Frontend Layer**: React-based UI with Next.js App Router, featuring components for resume building, internationalization, and state management via Zustand.
 - **Backend Layer**: Server-side logic including Mongoose models for MongoDB, utility libraries for validations and error handling, and middleware for security and rate limiting.
-- **API Layer**: Next.js API routes handling authentication (NextAuth), CRUD operations for resumes and cover letters, file uploads, and PDF generation using Puppeteer.
+- **API Layer**: Next.js API routes handling authentication (NextAuth), CRUD operations for resumes and cover letters, file uploads, PDF generation using Puppeteer, and DOCX import/export using mammoth and docx libraries.
 - **Database**: Single MongoDB instance with encryption for sensitive fields.
 - **Authentication**: NextAuth.js for session management and OAuth providers.
 - **Testing**: Jest for unit/integration tests, Playwright for e2e tests.
@@ -40,7 +40,7 @@ To address scalability, maintainability, and resilience, the architecture will e
 ### Proposed Microservices
 
 - **User Service**: Manages user authentication, profiles, and settings. Uses separate MongoDB instance.
-- **Resume Service**: Handles resume creation, storage, and retrieval. Includes parsing and template management.
+- **Resume Service**: Handles resume creation, storage, and retrieval. Includes parsing (PDF, DOCX), template management, and document generation (PDF, DOCX).
 - **Cover Letter Service**: Generates and manages cover letters, with PDF export capabilities.
 - **JD Parser Service**: Parses job descriptions for matching algorithms.
 - **Notification Service**: Handles email/SMS notifications (future addition).

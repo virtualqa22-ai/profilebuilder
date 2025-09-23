@@ -18,6 +18,7 @@ The CareerVerve API provides comprehensive endpoints for resume and cover letter
 - [Cover Letters](#cover-letters)
 - [User Management](#user-management)
 - [File Upload](#file-upload)
+- [DOCX Import and Generation](#docx-import-and-generation)
 - [Locales](#locales)
 - [Metrics](#metrics)
 - [Error Codes](#error-codes)
@@ -430,6 +431,160 @@ Upload a file to the server.
 }
 ```
 
+## DOCX Import and Generation
+
+The DOCX endpoints provide functionality to import existing DOCX resume files and generate new DOCX documents from resume data. These endpoints support ATS-safe formatting and secure data processing.
+
+### POST /api/import-docx
+
+Import and parse a DOCX resume file into structured resume data.
+
+**Content-Type:** `multipart/form-data`
+
+**Authentication:** Required (valid session)
+
+**Form Data:**
+- `file`: DOCX file to import (max 10MB, .docx only)
+
+**Request Example:**
+```bash
+curl -X POST "https://api.careerverve.com/api/import-docx" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@resume.docx"
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "personalInfo": {
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john@example.com"
+    },
+    "summary": "Experienced software engineer with 5+ years...",
+    "workExperience": [
+      {
+        "title": "Senior Developer",
+        "company": "Tech Corp",
+        "description": "Led development of web applications"
+      }
+    ],
+    "education": [
+      {
+        "degree": "Bachelor of Science",
+        "university": "University of Tech"
+      }
+    ],
+    "skills": ["JavaScript", "React", "Node.js"],
+    "tables": [
+      {
+        "rows": [
+          ["Skill", "Level"],
+          ["JavaScript", "Expert"],
+          ["React", "Advanced"]
+        ]
+      }
+    ],
+    "bullets": [
+      "Led cross-functional teams",
+      "Implemented CI/CD pipelines"
+    ]
+  }
+}
+```
+
+**Error Responses:**
+- `400 BAD_REQUEST`: Invalid file format or size exceeded
+- `401 UNAUTHORIZED`: Authentication required
+- `413 PAYLOAD_TOO_LARGE`: File exceeds maximum size
+- `422 UNPROCESSABLE_ENTITY`: DOCX parsing failed or invalid content
+
+**Security Notes:**
+- Files are scanned for malware before processing
+- All extracted text is sanitized to prevent XSS
+- Temporary files are deleted after processing
+- Rate limited to 10 imports per hour per user
+
+### POST /api/generate-docx
+
+Generate a DOCX document from resume data with ATS-safe formatting.
+
+**Content-Type:** `application/json`
+
+**Authentication:** Required (valid session)
+
+**Request Body:**
+```json
+{
+  "resumeData": {
+    "personalInfo": {
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john@example.com"
+    },
+    "summary": "Experienced software engineer...",
+    "workExperience": [
+      {
+        "title": "Senior Developer",
+        "company": "Tech Corp",
+        "startDate": "2020-01-01",
+        "endDate": "2023-12-31",
+        "description": "Led development of web applications"
+      }
+    ],
+    "education": [
+      {
+        "degree": "Bachelor of Science",
+        "university": "University of Tech",
+        "graduationDate": "2019-05-15"
+      }
+    ],
+    "skills": ["JavaScript", "React", "Node.js"]
+  },
+  "template": "ats-safe"
+}
+```
+
+**Request Example:**
+```bash
+curl -X POST "https://api.careerverve.com/api/generate-docx" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "resumeData": {
+      "personalInfo": {"firstName": "John", "lastName": "Doe"},
+      "summary": "Experienced developer",
+      "skills": ["JavaScript", "React"]
+    }
+  }'
+```
+
+**Response (200):**
+Content-Type: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+Content-Disposition: `attachment; filename="resume.docx"`
+
+(Binary DOCX file data)
+
+**Error Responses:**
+- `400 BAD_REQUEST`: Invalid resume data or validation failed
+- `401 UNAUTHORIZED`: Authentication required
+- `422 UNPROCESSABLE_ENTITY`: Document generation failed
+
+**Security Notes:**
+- All input data is validated and sanitized
+- Generated documents use ATS-safe formatting (Arial font, no graphics)
+- No executable content or macros in generated files
+- Rate limited to 50 generations per hour per user
+
+**Ethical Considerations:**
+- Resume data contains sensitive personal information (PII)
+- Data is processed temporarily and not stored without consent
+- Users retain ownership of their resume data
+- Processing complies with GDPR and privacy regulations
+- Fairness: Algorithms do not discriminate based on protected characteristics
+
 ## Locales
 
 ### GET /api/locales
@@ -643,6 +798,13 @@ curl -X POST "https://api.careerverve.com/api/upload" \
 - Health check and metrics endpoints
 - Comprehensive error handling and validation
 
+### Version 1.1.0 (Phase 12)
+- Added DOCX import and generation endpoints
+- DOCX parsing with table and bullet extraction
+- ATS-safe DOCX document generation
+- Enhanced security for document processing
+- Ethical considerations for sensitive resume data handling
+
 ## Support
 
 For API support, please contact:
@@ -658,6 +820,8 @@ For API support, please contact:
 | `/api/resumes` | 100 req/min | 1 minute |
 | `/api/auth/*` | 5 req/min | 1 minute |
 | `/api/upload` | 10 req/hour | 1 hour |
+| `/api/import-docx` | 10 req/hour | 1 hour |
+| `/api/generate-docx` | 50 req/hour | 1 hour |
 | `/api/user/*` | 50 req/min | 1 minute |
 
 ## Webhooks
