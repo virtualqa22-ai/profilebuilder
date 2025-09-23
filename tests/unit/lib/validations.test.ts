@@ -21,8 +21,8 @@ describe('Validation Functions', () => {
         personalInfo: {
           label: 'Personal Information',
           fields: {
-            name: { label: 'Name', optional: false },
-            email: { label: 'Email', optional: false },
+            name: { label: 'Name', placeholder: 'Enter your name', optional: false },
+            email: { label: 'Email', placeholder: 'Enter your email', optional: false },
           },
           order: ['name', 'email'],
         },
@@ -34,16 +34,18 @@ describe('Validation Functions', () => {
         workExperience: {
           label: 'Work Experience',
           fields: {
-            company: { label: 'Company', optional: false },
-            position: { label: 'Position', optional: false },
+            company: { label: 'Company', placeholder: 'Enter company name', optional: false },
+            position: { label: 'Position', placeholder: 'Enter position', optional: false },
           },
+          order: ['company', 'position'],
         },
         education: {
           label: 'Education',
           fields: {
-            institution: { label: 'Institution', optional: false },
-            degree: { label: 'Degree', optional: false },
+            institution: { label: 'Institution', placeholder: 'Enter institution', optional: false },
+            degree: { label: 'Degree', placeholder: 'Enter degree', optional: false },
           },
+          order: ['institution', 'degree'],
         },
       },
       optionalFields: {

@@ -50,7 +50,9 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
   // Render optional fields UI if enabled in locale
   const renderOptionalFields = () => {
     if (!selectedLocaleData?.optionalFields) return null;
-    const [photoPrivacy, setPhotoPrivacy] = useState(true);
+
+
+    
     const fields = [
       { key: 'photos', label: 'Photos', type: 'file' },
       { key: 'certifications', label: 'Certifications', type: 'file' },
@@ -123,14 +125,16 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
           })}
         </div>
       </section>
-    );
+   );
   };
+  const [photoPrivacy, setPhotoPrivacy] = useState(true);
   const [message, setMessage] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [showComments, setShowComments] = useState<Record<string, boolean>>({});
   const [comments, setComments] = useState<any[]>([]);
   const [showOptionalFields, setShowOptionalFields] = useState<Record<string, boolean>>({});
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  
 
   const selectedLocaleData = getLocaleByCode(effectiveLocale);
 

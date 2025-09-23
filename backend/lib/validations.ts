@@ -71,6 +71,10 @@ export const validateResumeData = (data: ResumeData, schema: ILocale): Validatio
   // Validate sections with fields and order
   Object.entries(schema.sections).forEach(([sectionKey, section]) => {
     if (section.fields && section.order) {
+      // Skip sections that are not present in data
+      if (!data[sectionKey]) return;
+      // Skip array sections (workExperience, education) as they are validated separately
+      if (Array.isArray(data[sectionKey])) return;
       section.order.forEach((fieldName: string) => {
         const field = section.fields![fieldName];
         const inputId = `${sectionKey}-${fieldName}`;
@@ -88,9 +92,9 @@ export const validateResumeData = (data: ResumeData, schema: ILocale): Validatio
   });
 
   // Validate work experience
-  if (data.workExperience) {
+  if (data.workExperience && schema.sections.workExperience.order) {
     (data.workExperience as Array<Record<string, string>>).forEach((exp, index: number) => {
-      schema.sections.workExperience.order.forEach((fieldName: string) => {
+      schema.sections.workExperience.order!.forEach((fieldName: string) => {
         const field = schema.sections.workExperience.fields![fieldName];
         const inputId = `workExperience-${index}-${fieldName}`;
         if (!field.optional && !exp[fieldName]) {
@@ -101,9 +105,9 @@ export const validateResumeData = (data: ResumeData, schema: ILocale): Validatio
   }
 
   // Validate education
-  if (data.education) {
+  if (data.education && schema.sections.education.order) {
     (data.education as Array<Record<string, string>>).forEach((edu, index: number) => {
-      schema.sections.education.order.forEach((fieldName: string) => {
+      schema.sections.education.order!.forEach((fieldName: string) => {
         const field = schema.sections.education.fields![fieldName];
         const inputId = `education-${index}-${fieldName}`;
         if (!field.optional && !edu[fieldName]) {

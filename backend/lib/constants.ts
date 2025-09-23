@@ -15,14 +15,14 @@ export const MAX_FIELD_LENGTH = 500;
 export const DEFAULT_LOCALE = 'en-US';
 
 // Security Constants
-export const SECURITY_HEADERS = {
+export const SECURITY_HEADERS = Object.freeze({
   CONTENT_TYPE_OPTIONS: 'nosniff',
   FRAME_OPTIONS: 'SAMEORIGIN',
   XSS_PROTECTION: '1; mode=block',
   REFERRER_POLICY: 'strict-origin-when-cross-origin',
   PERMISSIONS_POLICY: 'geolocation=(), microphone=()',
   HSTS: 'max-age=63072000; includeSubDomains; preload',
-} as const;
+});
 // Security Event Types
 export const SECURITY_EVENT_TYPES = {
   AUTH_FAILURE: 'authentication_failure',
@@ -59,7 +59,7 @@ export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
 export const ALLOWED_DOCUMENT_TYPES = ['application/pdf'];
 
 // Resume Constants
-export const RESUME_SECTIONS = [
+export const RESUME_SECTIONS = Object.freeze([
   'personalInfo',
   'summary',
   'workExperience',
@@ -67,14 +67,14 @@ export const RESUME_SECTIONS = [
   'skills',
   'projects',
   'awardsCertifications',
-] as const;
+]);
 
-export const OPTIONAL_FIELDS = [
+export const OPTIONAL_FIELDS = Object.freeze([
   'photos',
   'certifications',
   'hobbies',
   'references',
-] as const;
+]);
 
 /**
  * Cover Letter Templates
