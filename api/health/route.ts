@@ -47,42 +47,12 @@ import { getRequestLogger } from '../../backend/lib/logger';
  * - Basic system metrics
  */
 
-export async function GET() {
-  const logger = getRequestLogger();
-  const startTime = Date.now();
-
-  try {
-    // Log database connectivity check
-    const dbStartTime = Date.now();
-    await dbConnect();
-    logger.logDatabaseOperation('connect', 'mongodb', Date.now() - dbStartTime);
-
-    const healthStatus = {
-      status: 'healthy',
-      service: 'profilebuilder',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      version: process.env.npm_package_version || '1.0.0',
-      checks: {
-        database: 'healthy',
-        memory: {
-          used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
-          total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
-          unit: 'MB'
-        }
-      },
-      responseTime: Date.now() - startTime
-    };
-
-    const duration = Date.now() - startTime;
-    logger.logRequestEnd('GET', '/api/health', 200, duration);
-
-    const res = NextResponse.json(healthStatus, { status: 200 });
-    applySecurityHeaders(res);
-    return res;
-  } catch (error: any) {
-    const duration = Date.now() - startTime;
-    logger.logRequestEnd('GET', '/api/health', 500, duration, { error: error.message });
-    return handleDatabaseError(error);
-  }
+export async function GET(request: Request) {
+  // Deprecation notice: This endpoint is deprecated. Use /api/v1/health instead.
+  // Redirect to versioned endpoint for backward compatibility
+  const v1Url = new URL('/api/v1/health', request.url);
+  const res = NextResponse.redirect(v1Url);
+  res.headers.set('Deprecation', 'true');
+  res.headers.set('Link', '</api/v1/health>; rel="successor-version"');
+  return res;
 }

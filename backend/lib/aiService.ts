@@ -13,6 +13,7 @@ import { sanitizePrompt, validateAIContent, trackAIPerformance, logAISecurityEve
 import { getCacheManager } from './cacheManager';
 import { trackAiMetrics } from './metrics';
 import { globalLogger } from './logger';
+import { CircuitBreaker } from './circuitBreaker';
 
 /**
  * AI Service Configuration
@@ -36,57 +37,6 @@ const defaultConfig: AIServiceConfig = {
   cacheTTL: 3600, // 1 hour
 };
 
-/**
- * Circuit breaker state for AI service resilience
- */
-class CircuitBreaker {
-  private failures = 0;
-  private lastFailureTime = 0;
-  private state: 'closed' | 'open' | 'half-open' = 'closed';
-  private readonly failureThreshold = 5;
-  private readonly recoveryTimeout = 60000; // 1 minute
-
-  /**
-   * Execute function with circuit breaker protection
-   */
-  async execute<T>(fn: () => Promise<T>): Promise<T> {
-    if (this.state === 'open') {
-      if (Date.now() - this.lastFailureTime > this.recoveryTimeout) {
-        this.state = 'half-open';
-      } else {
-        throw new Error('Circuit breaker is open');
-      }
-    }
-
-    try {
-      const result = await fn();
-      this.onSuccess();
-      return result;
-    } catch (error) {
-      this.onFailure();
-      throw error;
-    }
-  }
-
-  private onSuccess() {
-    this.failures = 0;
-    this.state = 'closed';
-  }
-
-  private onFailure() {
-    this.failures++;
-    this.lastFailureTime = Date.now();
-
-    if (this.failures >= this.failureThreshold) {
-      this.state = 'open';
-      globalLogger.warn('Circuit breaker opened due to repeated failures');
-    }
-  }
-
-  getState() {
-    return this.state;
-  }
-}
 
 /**
  * Rate limiter for AI requests (10 req/min per user)
@@ -350,50 +300,34 @@ export class AIService {
   }
 
   /**
-   * Call OpenAI API with retry logic
+   * Call OpenAI API (circuit breaker handles retries)
    */
   private async callOpenAI(prompt: string, operation: string): Promise<string> {
     if (!this.config.openaiApiKey) {
       throw new Error('OpenAI API key not configured');
     }
 
-    let lastError: Error | null = null;
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.config.openaiApiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.config.model,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 2000,
+        temperature: 0.7,
+      }),
+      signal: AbortSignal.timeout(this.config.timeout),
+    });
 
-    for (let attempt = 1; attempt <= this.config.maxRetries; attempt++) {
-      try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.config.openaiApiKey}`,
-          },
-          body: JSON.stringify({
-            model: this.config.model,
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 2000,
-            temperature: 0.7,
-          }),
-          signal: AbortSignal.timeout(this.config.timeout),
-        });
-
-        if (!response.ok) {
-          throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        return data.choices[0]?.message?.content || '';
-      } catch (error) {
-        lastError = error as Error;
-        globalLogger.warn(`AI ${operation} attempt ${attempt} failed:`, error);
-
-        if (attempt < this.config.maxRetries) {
-          // Exponential backoff
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
-        }
-      }
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
     }
 
-    throw lastError || new Error('AI service failed after all retries');
+    const data = await response.json();
+    return data.choices[0]?.message?.content || '';
   }
 
   /**

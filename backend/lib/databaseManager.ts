@@ -1,10 +1,22 @@
 import mongoose from 'mongoose';
 import { logger } from './logger';
+import { CircuitBreaker } from './circuitBreaker';
 
 /**
  * Database connection management utility with connection pooling, health checks, and graceful shutdown.
  * Provides optimized MongoDB connection handling for production environments.
  */
+/**
+ * Circuit breaker for database connection resilience
+ */
+const dbCircuitBreaker = new CircuitBreaker({
+  failureThreshold: 3, // Lower threshold for DB connections
+  recoveryTimeout: 30000, // 30 seconds recovery time
+  maxRetries: 2,
+  baseDelay: 2000, // 2 seconds base delay
+  maxDelay: 10000, // 10 seconds max delay
+});
+
 
 // Connection configuration with pooling options
 const getConnectionOptions = (): mongoose.ConnectOptions => {
@@ -40,7 +52,7 @@ export const connectDatabase = async (uri: string): Promise<typeof mongoose> => 
       minPoolSize: options.minPoolSize,
     });
 
-    const connection = await mongoose.connect(uri, options);
+    const connection = await dbCircuitBreaker.execute(() => mongoose.connect(uri, options));
 
     // Set up connection event monitoring
     setupConnectionMonitoring();

@@ -6,7 +6,7 @@
  */
 
 // Base API paths
-export const API_BASE = '/api';
+export const API_BASE = '/api/v1';
 
 // Authentication endpoints
 export const AUTH_ENDPOINTS = {
@@ -63,6 +63,14 @@ export const LOCALE_ENDPOINTS = {
 export const COVER_LETTER_ENDPOINTS = {
   GENERATE: `${API_BASE}/cover-letter`,
 } as const;
+// AI endpoints
+export const AI_ENDPOINTS = {
+  LINT: `${API_BASE}/ai/lint`,
+  REWRITE: `${API_BASE}/ai/rewrite`,
+  SUGGESTIONS: `${API_BASE}/ai/suggestions`,
+} as const;
+
+// Frontend routes (for reference)
 
 // Frontend routes (for reference)
 export const FRONTEND_ROUTES = {
