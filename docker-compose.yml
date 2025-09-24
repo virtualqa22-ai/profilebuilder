@@ -1,6 +1,111 @@
 version: '3.8'
 
 services:
+  # Microservices
+  user-management:
+    build: ./services/user-management
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://user_mongo:27017/user_management_db
+      - PORT=3001
+    depends_on:
+      - user_mongo
+    restart: unless-stopped
+
+  resume-management:
+    build: ./services/resume-management
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://resume_mongo:27017/resume_management_db
+      - PORT=3002
+    depends_on:
+      - resume_mongo
+    restart: unless-stopped
+
+  ai-processing:
+    build: ./services/ai-processing
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://ai_mongo:27017/ai_processing_db
+      - PORT=3003
+    depends_on:
+      - ai_mongo
+    restart: unless-stopped
+
+  document-generation:
+    build: ./services/document-generation
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://doc_mongo:27017/document_generation_db
+      - PORT=3004
+    depends_on:
+      - doc_mongo
+    restart: unless-stopped
+
+  file-upload:
+    build: ./services/file-upload
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://file_mongo:27017/file_upload_db
+      - PORT=3005
+    depends_on:
+      - file_mongo
+    volumes:
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+
+  # Databases for microservices
+  user_mongo:
+    image: mongo:7.0
+    environment:
+      - MONGO_INITDB_DATABASE=user_management_db
+    volumes:
+      - user_mongo_data:/data/db
+    restart: unless-stopped
+
+  resume_mongo:
+    image: mongo:7.0
+    environment:
+      - MONGO_INITDB_DATABASE=resume_management_db
+    volumes:
+      - resume_mongo_data:/data/db
+    restart: unless-stopped
+
+  ai_mongo:
+    image: mongo:7.0
+    environment:
+      - MONGO_INITDB_DATABASE=ai_processing_db
+    volumes:
+      - ai_mongo_data:/data/db
+    restart: unless-stopped
+
+  doc_mongo:
+    image: mongo:7.0
+    environment:
+      - MONGO_INITDB_DATABASE=document_generation_db
+    volumes:
+      - doc_mongo_data:/data/db
+    restart: unless-stopped
+
+  file_mongo:
+    image: mongo:7.0
+    environment:
+      - MONGO_INITDB_DATABASE=file_upload_db
+    volumes:
+      - file_mongo_data:/data/db
+    restart: unless-stopped
+
+  # Legacy services (for migration)
   app:
     build: .
     ports:
@@ -8,25 +113,11 @@ services:
     environment:
       - NODE_ENV=production
       - MONGODB_URI=mongodb://mongo:27017/profilebuilder
-      # Database connection pooling configuration for optimized performance
-      - MONGODB_MAX_POOL_SIZE=20
-      - MONGODB_MIN_POOL_SIZE=5
-      - MONGODB_MAX_IDLE_TIME_MS=30000
-      - MONGODB_SERVER_SELECTION_TIMEOUT_MS=5000
-      # Add other environment variables as needed
     depends_on:
       - mongo
     volumes:
       - ./frontend/public/uploads:/app/public/uploads
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
 
   mongo:
     image: mongo:7.0
@@ -37,14 +128,6 @@ services:
     volumes:
       - mongo_data:/data/db
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 1G
 
   redis:
     image: redis:7-alpine
@@ -54,15 +137,12 @@ services:
     volumes:
       - redis_data:/data
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
 
 volumes:
+  user_mongo_data:
+  resume_mongo_data:
+  ai_mongo_data:
+  doc_mongo_data:
+  file_mongo_data:
   mongo_data:
   redis_data:

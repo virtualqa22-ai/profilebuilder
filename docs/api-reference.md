@@ -1,272 +1,338 @@
-# CareerVerve API Reference
+# CareerVerve Microservices API Reference
 
 ## Overview
 
-The CareerVerve API provides comprehensive endpoints for resume and cover letter management, user authentication, file uploads, and system monitoring. This API follows RESTful principles and includes robust security, validation, and error handling.
+The CareerVerve platform is built on a microservices architecture with five core services: User Management, Resume Management, AI Processing, Document Generation, and File Upload. This document provides comprehensive API documentation for all microservices, including OpenAPI 3.0 specifications, request/response schemas, authentication requirements, error codes, and examples.
 
-**Base URL:** `https://your-domain.com/api`
+**Architecture Overview:**
+- **User Management Service**: Handles user accounts, authentication, audit logs, and GDPR compliance
+- **Resume Management Service**: Manages resume CRUD operations and user-specific data isolation
+- **AI Processing Service**: Provides AI-powered content processing with actor system integration
+- **Document Generation Service**: Handles DOCX document creation and ATS-safe formatting
+- **File Upload Service**: Manages secure file uploads with virus scanning and validation
+
+**Base URLs:**
+- User Management: `http://user-management-service:3001/api/v1`
+- Resume Management: `http://resume-management-service:3002/api/v1`
+- AI Processing: `http://ai-processing-service:3003/api/v1`
+- Document Generation: `http://document-generation-service:3004/api/v1`
+- File Upload: `http://file-upload-service:3005/api/v1`
 
 **Version:** 1.0.0
 
-**Authentication:** NextAuth.js with OAuth providers (Google, LinkedIn) and credentials
+**Authentication:** JWT tokens with service-to-service authentication via API keys
 
 ## Table of Contents
 
 - [Authentication](#authentication)
-- [Health Check](#health-check)
-- [Resumes](#resumes)
-- [Cover Letters](#cover-letters)
-- [User Management](#user-management)
-- [File Upload](#file-upload)
-- [DOCX Import and Generation](#docx-import-and-generation)
-- [Locales](#locales)
-- [Metrics](#metrics)
-- [Ads](#ads)
-- [AI](#ai)
+- [User Management Service](#user-management-service)
+- [Resume Management Service](#resume-management-service)
+- [AI Processing Service](#ai-processing-service)
+- [Document Generation Service](#document-generation-service)
+- [File Upload Service](#file-upload-service)
+- [Inter-Service Communication](#inter-service-communication)
+- [Actor System Integration](#actor-system-integration)
 - [Error Codes](#error-codes)
 - [Rate Limiting](#rate-limiting)
 - [Security](#security)
+- [Compliance](#compliance)
 
 ## Authentication
 
-The API uses NextAuth.js for authentication with multiple providers.
+### JWT Token Authentication
 
-### Supported Providers
+All microservices use JWT tokens for authentication. Tokens are issued by the User Management Service and validated by each service.
 
-- **Google OAuth**
-- **LinkedIn OAuth**
-- **Credentials** (email/password)
+**Header:** `Authorization: Bearer <jwt_token>`
 
-### Authentication Endpoints
+### Service-to-Service Authentication
 
-#### GET/POST /api/auth/[...nextauth]
+Internal service communication uses API keys stored in environment variables.
 
-NextAuth.js handler for all authentication operations.
+**Header:** `X-API-Key: <service_api_key>`
 
-**Supported Operations:**
-- Sign in with providers
-- Sign out
-- Session management
-- CSRF token generation
+### Token Validation
 
-**Example Sign In Request:**
-```bash
-POST /api/auth/signin/google
-```
+```javascript
+// Example token validation middleware
+const validateToken = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'No token provided' });
 
-**Session Response:**
-```json
-{
-  "user": {
-    "name": "John Doe",
-    "email": "john@example.com",
-    "image": "https://..."
-  },
-  "expires": "2024-12-31T23:59:59.999Z"
-}
-```
-
-## Health Check
-
-### GET /api/health
-
-Provides comprehensive health status for monitoring and load balancing.
-
-**Response (200):**
-```json
-{
-  "status": "healthy",
-  "service": "profilebuilder",
-  "timestamp": "2024-01-15T10:30:00.000Z",
-  "uptime": 3600.5,
-  "version": "1.0.0",
-  "checks": {
-    "database": "healthy",
-    "memory": {
-      "used": 45,
-      "total": 100,
-      "unit": "MB"
-    }
-  },
-  "responseTime": 15
-}
-```
-
-**Response (500):**
-```json
-{
-  "status": "unhealthy",
-  "service": "profilebuilder",
-  "timestamp": "2024-01-15T10:30:00.000Z",
-  "error": "Database connection failed"
-}
-```
-
-## Resumes
-
-### GET /api/resumes
-
-Retrieve a paginated list of resumes with optional filtering.
-
-**Query Parameters:**
-- `page` (number): Page number (default: 1)
-- `limit` (number): Items per page (default: 10, max: 100)
-- `locale` (string): Filter by locale
-- `sortBy` (string): Sort field (default: createdAt)
-- `sortOrder` (string): Sort order - 'asc' or 'desc' (default: desc)
-- `includeContent` (boolean): Include full content (default: false)
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "507f1f77bcf86cd799439011",
-      "title": "Software Engineer Resume",
-      "locale": "en-US",
-      "version": 1,
-      "createdAt": "2024-01-15T10:00:00.000Z",
-      "updatedAt": "2024-01-15T10:00:00.000Z"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 10,
-    "total": 25,
-    "pages": 3,
-    "hasNext": true,
-    "hasPrev": false
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid token' });
   }
+};
+```
+
+## User Management Service
+
+**Port:** 3001
+**Database:** MongoDB (user_management_db)
+
+### Endpoints
+
+#### GET /api/v1/users/{id}
+
+Retrieve user information by ID.
+
+**Authentication:** Required (JWT)
+
+**Parameters:**
+- `id` (path): User ID (MongoDB ObjectId)
+
+**Response (200):**
+```json
+{
+  "id": "507f1f77bcf86cd799439011",
+  "email": "john@example.com",
+  "name": "John Doe",
+  "privacyMode": false,
+  "createdAt": "2024-01-15T10:00:00.000Z",
+  "updatedAt": "2024-01-15T10:00:00.000Z"
 }
 ```
 
-### POST /api/resumes
+**Error Responses:**
+- `401 Unauthorized`: Invalid or missing token
+- `404 Not Found`: User not found
 
-Create a new resume.
+#### POST /api/v1/users
+
+Create a new user account.
+
+**Authentication:** Not required (public registration)
 
 **Request Body:**
 ```json
 {
-  "title": "Software Engineer Resume",
-  "locale": "en-US",
-  "personalInfo": {
-    "firstName": "John",
-    "lastName": "Doe",
-    "email": "john@example.com"
-  },
-  "summary": "Experienced software engineer...",
-  "workExperience": [
-    {
-      "company": "Tech Corp",
-      "position": "Senior Developer",
-      "startDate": "2020-01-01",
-      "endDate": "2023-12-31",
-      "description": "Led development of..."
-    }
-  ],
-  "education": [
-    {
-      "institution": "University of Tech",
-      "degree": "Bachelor of Science",
-      "field": "Computer Science",
-      "graduationDate": "2019-05-15"
-    }
-  ],
-  "skills": ["JavaScript", "React", "Node.js"],
-  "projects": [
-    {
-      "name": "Portfolio Website",
-      "description": "Personal portfolio built with React",
-      "technologies": ["React", "CSS", "JavaScript"]
-    }
-  ]
+  "email": "john@example.com",
+  "name": "John Doe",
+  "privacyMode": false
 }
 ```
 
 **Response (201):**
 ```json
 {
-  "success": true,
-  "data": {
-    "id": "507f1f77bcf86cd799439011",
-    "title": "Software Engineer Resume",
-    "locale": "en-US",
-    "version": 1,
-    "createdAt": "2024-01-15T10:00:00.000Z",
-    "updatedAt": "2024-01-15T10:00:00.000Z"
-  }
+  "id": "507f1f77bcf86cd799439011",
+  "email": "john@example.com",
+  "name": "John Doe",
+  "privacyMode": false,
+  "createdAt": "2024-01-15T10:00:00.000Z",
+  "updatedAt": "2024-01-15T10:00:00.000Z"
 }
 ```
 
-### GET /api/resumes/{id}
+**Error Responses:**
+- `409 Conflict`: Email already exists
+- `422 Unprocessable Entity`: Validation failed
 
-Retrieve a specific resume by ID.
+#### PUT /api/v1/users/{id}
 
-**Query Parameters:**
-- `includeContent` (boolean): Include full content (default: true)
+Update user information.
+
+**Authentication:** Required (JWT, user owns resource or admin)
+
+**Request Body:**
+```json
+{
+  "name": "John Smith",
+  "privacyMode": true
+}
+```
+
+**Response (200):** Same as GET response
+
+#### DELETE /api/v1/users/{id}
+
+Delete user account (GDPR compliance).
+
+**Authentication:** Required (JWT, user owns resource or admin)
 
 **Response (200):**
 ```json
 {
-  "success": true,
-  "data": {
-    "id": "507f1f77bcf86cd799439011",
-    "title": "Software Engineer Resume",
-    "locale": "en-US",
-    "personalInfo": { ... },
-    "summary": "Experienced software engineer...",
-    "workExperience": [ ... ],
-    "education": [ ... ],
-    "skills": [ ... ],
-    "version": 1,
-    "createdAt": "2024-01-15T10:00:00.000Z",
-    "updatedAt": "2024-01-15T10:00:00.000Z"
+  "message": "User deleted successfully"
+}
+```
+
+#### GET /api/v1/health
+
+Service health check.
+
+**Response (200):**
+```json
+{
+  "status": "healthy",
+  "service": "user-management",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "uptime": 3600.5,
+  "version": "1.0.0"
+}
+```
+
+### Data Models
+
+#### User Schema
+```javascript
+{
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    validate: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    maxlength: 254
+  },
+  name: {
+    type: String,
+    maxlength: 100
+  },
+  privacyMode: {
+    type: Boolean,
+    default: false
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+    immutable: true
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 }
 ```
 
-### PUT /api/resumes/{id}
+## Resume Management Service
+
+**Port:** 3002
+**Database:** MongoDB (resume_management_db)
+
+### Endpoints
+
+#### GET /api/v1/resumes/{id}
+
+Retrieve a specific resume.
+
+**Authentication:** Required (JWT, user owns resource)
+
+**Response (200):**
+```json
+{
+  "id": "507f1f77bcf86cd799439011",
+  "userId": "user123",
+  "title": "Software Engineer Resume",
+  "content": "encrypted_content_here",
+  "locale": "en-US",
+  "version": 1,
+  "photos": "encrypted_photos",
+  "certifications": "encrypted_certs",
+  "hobbies": "encrypted_hobbies",
+  "references": "encrypted_refs",
+  "comments": [
+    {
+      "field": "workExperience",
+      "text": "Consider adding metrics",
+      "author": "AI Assistant",
+      "createdAt": "2024-01-15T11:00:00.000Z"
+    }
+  ],
+  "createdAt": "2024-01-15T10:00:00.000Z",
+  "updatedAt": "2024-01-15T10:00:00.000Z"
+}
+```
+
+#### GET /api/v1/resumes/user/{userId}
+
+Retrieve all resumes for a user.
+
+**Authentication:** Required (JWT, user owns resource)
+
+**Response (200):**
+```json
+[
+  {
+    "id": "507f1f77bcf86cd799439011",
+    "title": "Software Engineer Resume",
+    "locale": "en-US",
+    "version": 1,
+    "createdAt": "2024-01-15T10:00:00.000Z"
+  }
+]
+```
+
+#### POST /api/v1/resumes
+
+Create a new resume.
+
+**Authentication:** Required (JWT)
+
+**Request Body:**
+```json
+{
+  "userId": "user123",
+  "title": "Software Engineer Resume",
+  "content": "Resume content here...",
+  "locale": "en-US",
+  "photos": "base64_encoded_photos",
+  "certifications": "Certification details...",
+  "hobbies": "Hobby information...",
+  "references": "Reference contacts..."
+}
+```
+
+#### PUT /api/v1/resumes/{id}
 
 Update an existing resume.
 
-**Request Body:** Same as POST, but all fields optional.
+**Authentication:** Required (JWT, user owns resource)
 
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "507f1f77bcf86cd799439011",
-    "title": "Updated Resume Title",
-    "version": 2,
-    "updatedAt": "2024-01-15T11:00:00.000Z"
-  }
-}
-```
+#### DELETE /api/v1/resumes/{id}
 
-### DELETE /api/resumes/{id}
+Delete a resume.
 
-Delete a resume by ID.
+**Authentication:** Required (JWT, user owns resource)
 
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {}
-}
-```
+#### POST /api/v1/resumes/{id}/comments
 
-### POST /api/resumes/{id}/comments
+Add a comment to a resume field.
 
-Add a comment to a specific resume field.
+**Authentication:** Required (JWT)
 
 **Request Body:**
 ```json
 {
   "field": "workExperience",
-  "text": "Consider adding more quantifiable achievements",
-  "author": "John Doe"
+  "text": "Consider adding quantifiable achievements",
+  "author": "AI Assistant"
+}
+```
+
+## AI Processing Service
+
+**Port:** 3003
+**Architecture:** Actor-based system with Akka.NET/C# implementation
+
+### Endpoints
+
+#### POST /api/v1/ai/rewrite
+
+Rewrite content using AI with style specifications.
+
+**Authentication:** Required (JWT)
+
+**Request Body:**
+```json
+{
+  "content": "Content to rewrite...",
+  "style": "professional",
+  "userId": "user123",
+  "correlationId": "req-12345"
 }
 ```
 
@@ -274,40 +340,25 @@ Add a comment to a specific resume field.
 ```json
 {
   "success": true,
-  "data": [
-    {
-      "field": "workExperience",
-      "text": "Consider adding more quantifiable achievements",
-      "author": "John Doe",
-      "createdAt": "2024-01-15T11:00:00.000Z"
-    }
-  ]
+  "data": "Rewritten professional content...",
+  "processingTime": 1.5,
+  "model": "gpt-4",
+  "correlationId": "req-12345"
 }
 ```
 
-## Cover Letters
+#### POST /api/v1/ai/suggestions
 
-### POST /api/cover-letter
+Provide grammar and style suggestions.
 
-Generate a cover letter from provided data.
+**Authentication:** Required (JWT)
 
 **Request Body:**
 ```json
 {
-  "name": "John Doe",
-  "email": "john@example.com",
-  "recipientName": "Jane Smith",
-  "companyName": "Tech Corp",
-  "body": "I am writing to express my interest in the Software Engineer position...",
-  "template": "classic",
-  "address": "123 Main St, City, State 12345",
-  "phone": "+1-555-0123",
-  "date": "2024-01-15",
-  "recipientTitle": "HR Manager",
-  "companyAddress": "456 Business Ave, City, State 12345",
-  "salutation": "Dear Ms. Smith,",
-  "closing": "Sincerely,",
-  "signature": "John Doe"
+  "content": "Content to analyze...",
+  "userId": "user123",
+  "correlationId": "req-12346"
 }
 ```
 
@@ -316,623 +367,27 @@ Generate a cover letter from provided data.
 {
   "success": true,
   "data": {
-    "coverLetter": "John Doe\n123 Main St, City, State 12345\n+1-555-0123\njohn@example.com\n\n2024-01-15\n\nJane Smith\nHR Manager\nTech Corp\n456 Business Ave, City, State 12345\n\nDear Ms. Smith,\n\nI am writing to express my interest in the Software Engineer position...\n\nSincerely,\n\nJohn Doe",
-    "template": "classic"
-  }
-}
-```
-
-### GET /api/cover-letter
-
-Retrieve available cover letter templates.
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "templates": [
-    {
-      "id": "classic",
-      "name": "Classic Template"
-    },
-    {
-      "id": "modern",
-      "name": "Modern Template"
-    }
-  ]
-}
-```
-
-## User Management
-
-### GET /api/user/data
-
-Export user data (requires authentication).
-
-**Response (200):**
-```json
-{
-  "user": {
-    "id": "507f1f77bcf86cd799439011",
-    "email": "john@example.com",
-    "name": "John Doe",
-    "privacyMode": false
+    "grammar": ["Suggestion 1", "Suggestion 2"],
+    "style": ["Suggestion 3"],
+    "suggestions": ["General advice"]
   },
-  "resumes": [
-    {
-      "title": "Software Engineer Resume",
-      "locale": "en-US",
-      "version": 1,
-      "createdAt": "2024-01-15T10:00:00.000Z"
-    }
-  ],
-  "_metadata": {
-    "resumeCount": 1,
-    "limited": false,
-    "note": "Resume data is limited to metadata only for performance and security"
-  }
+  "correlationId": "req-12346"
 }
 ```
 
-### GET /api/user/settings
+#### POST /api/v1/ai/lint
 
-Retrieve user settings (requires authentication).
+Comprehensive content linting with severity scoring.
 
-**Response (200):**
-```json
-{
-  "privacyMode": false
-}
-```
-
-### PUT /api/user/settings
-
-Update user settings (requires authentication).
+**Authentication:** Required (JWT)
 
 **Request Body:**
 ```json
 {
-  "privacyMode": true
-}
-```
-
-**Response (200):**
-```json
-{
-  "privacyMode": true
-}
-```
-
-### DELETE /api/user/delete
-
-Delete user account and all associated data (requires authentication).
-
-**Response (200):**
-```json
-{
-  "message": "Account deleted successfully"
-}
-```
-
-## File Upload
-
-### POST /api/upload
-
-Upload a file to the server.
-
-**Content-Type:** `multipart/form-data`
-
-**Form Data:**
-- `file`: File to upload (max 10MB, supported: JPEG, PNG, GIF, PDF)
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "url": "/uploads/1705312200000-sample.pdf"
-}
-```
-
-## DOCX Import and Generation
-
-The DOCX endpoints provide functionality to import existing DOCX resume files and generate new DOCX documents from resume data. These endpoints support ATS-safe formatting and secure data processing.
-
-### POST /api/import-docx
-
-Import and parse a DOCX resume file into structured resume data.
-
-**Content-Type:** `multipart/form-data`
-
-**Authentication:** Required (valid session)
-
-**Form Data:**
-- `file`: DOCX file to import (max 10MB, .docx only)
-
-**Request Example:**
-```bash
-curl -X POST "https://api.careerverve.com/api/import-docx" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "file=@resume.docx"
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "personalInfo": {
-      "firstName": "John",
-      "lastName": "Doe",
-      "email": "john@example.com"
-    },
-    "summary": "Experienced software engineer with 5+ years...",
-    "workExperience": [
-      {
-        "title": "Senior Developer",
-        "company": "Tech Corp",
-        "description": "Led development of web applications"
-      }
-    ],
-    "education": [
-      {
-        "degree": "Bachelor of Science",
-        "university": "University of Tech"
-      }
-    ],
-    "skills": ["JavaScript", "React", "Node.js"],
-    "tables": [
-      {
-        "rows": [
-          ["Skill", "Level"],
-          ["JavaScript", "Expert"],
-          ["React", "Advanced"]
-        ]
-      }
-    ],
-    "bullets": [
-      "Led cross-functional teams",
-      "Implemented CI/CD pipelines"
-    ]
-  }
-}
-```
-
-**Error Responses:**
-- `400 BAD_REQUEST`: Invalid file format or size exceeded
-- `401 UNAUTHORIZED`: Authentication required
-- `413 PAYLOAD_TOO_LARGE`: File exceeds maximum size
-- `422 UNPROCESSABLE_ENTITY`: DOCX parsing failed or invalid content
-
-**Security Notes:**
-- Files are scanned for malware before processing
-- All extracted text is sanitized to prevent XSS
-- Temporary files are deleted after processing
-- Rate limited to 10 imports per hour per user
-
-### POST /api/generate-docx
-
-Generate a DOCX document from resume data with ATS-safe formatting.
-
-**Content-Type:** `application/json`
-
-**Authentication:** Required (valid session)
-
-**Request Body:**
-```json
-{
-  "resumeData": {
-    "personalInfo": {
-      "firstName": "John",
-      "lastName": "Doe",
-      "email": "john@example.com"
-    },
-    "summary": "Experienced software engineer...",
-    "workExperience": [
-      {
-        "title": "Senior Developer",
-        "company": "Tech Corp",
-        "startDate": "2020-01-01",
-        "endDate": "2023-12-31",
-        "description": "Led development of web applications"
-      }
-    ],
-    "education": [
-      {
-        "degree": "Bachelor of Science",
-        "university": "University of Tech",
-        "graduationDate": "2019-05-15"
-      }
-    ],
-    "skills": ["JavaScript", "React", "Node.js"]
-  },
-  "template": "ats-safe"
-}
-```
-
-**Request Example:**
-```bash
-curl -X POST "https://api.careerverve.com/api/generate-docx" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{
-    "resumeData": {
-      "personalInfo": {"firstName": "John", "lastName": "Doe"},
-      "summary": "Experienced developer",
-      "skills": ["JavaScript", "React"]
-    }
-  }'
-```
-
-**Response (200):**
-Content-Type: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
-Content-Disposition: `attachment; filename="resume.docx"`
-
-(Binary DOCX file data)
-
-**Error Responses:**
-- `400 BAD_REQUEST`: Invalid resume data or validation failed
-- `401 UNAUTHORIZED`: Authentication required
-- `422 UNPROCESSABLE_ENTITY`: Document generation failed
-
-**Security Notes:**
-- All input data is validated and sanitized
-- Generated documents use ATS-safe formatting (Arial font, no graphics)
-- No executable content or macros in generated files
-- Rate limited to 50 generations per hour per user
-
-**Ethical Considerations:**
-- Resume data contains sensitive personal information (PII)
-- Data is processed temporarily and not stored without consent
-- Users retain ownership of their resume data
-- Processing complies with GDPR and privacy regulations
-- Fairness: Algorithms do not discriminate based on protected characteristics
-
-## Locales
-
-### GET /api/locales
-
-Retrieve available locale configurations.
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "code": "en-US",
-      "name": "English (United States)",
-      "sections": {
-        "personalInfo": {
-          "label": "Personal Information",
-          "fields": {
-            "firstName": { "label": "First Name", "type": "text", "required": true },
-            "lastName": { "label": "Last Name", "type": "text", "required": true },
-            "email": { "label": "Email", "type": "email", "required": true }
-          }
-        }
-      }
-    }
-  ]
-}
-```
-
-### GET /api/locales/{locale}
-
-Retrieve configuration for a specific locale.
-
-**Response (200):** Same structure as above, filtered for the specific locale.
-
-## Metrics
-
-### GET /api/metrics
-
-Retrieve Prometheus-compatible metrics for monitoring.
-
-**Response (200):**
-```
-# HELP http_requests_total Total number of HTTP requests
-# TYPE http_requests_total counter
-http_requests_total{method="GET",route="/api/health",status="200"} 150
-
-# HELP http_request_duration_seconds HTTP request duration in seconds
-# TYPE http_request_duration_seconds histogram
-http_request_duration_seconds_bucket{method="GET",route="/api/health",le="0.1"} 140
-http_request_duration_seconds_bucket{method="GET",route="/api/health",le="0.5"} 9
-http_request_duration_seconds_bucket{method="GET",route="/api/health",le="1"} 1
-http_request_duration_seconds_bucket{method="GET",route="/api/health",le="+Inf"} 0
-http_request_duration_seconds_sum{method="GET",route="/api/health"} 15.5
-http_request_duration_seconds_count{method="GET",route="/api/health"} 150
-```
-
-## Ads
-
-The Ads endpoints provide functionality for tracking advertisement interactions and retrieving ad configuration settings. These endpoints prioritize user privacy through data anonymization and implement comprehensive security measures.
-
-### POST /api/ads/metrics
-
-Tracks advertisement interaction metrics with privacy protection and rate limiting.
-
-**Content-Type:** `application/json`
-
-**Request Body:**
-```json
-{
-  "user_id": "string (required) - User identifier to be anonymized",
-  "ad_id": "string (required) - Advertisement identifier",
-  "event_type": "string (required) - Type of interaction: 'impression', 'click', 'view', 'hover', 'close'",
-  "metadata": "object (optional) - Additional event data"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Metric tracked successfully"
-}
-```
-
-**Response (400 - Validation Error):**
-```json
-{
-  "success": false,
-  "error": "Validation failed",
-  "code": "VALIDATION_ERROR",
-  "details": {
-    "user_id": "User ID is required",
-    "ad_id": "Ad ID is required"
-  }
-}
-```
-
-**Response (429 - Rate Limited):**
-```json
-{
-  "success": false,
-  "error": "Rate limit exceeded. Please try again later.",
-  "code": "BAD_REQUEST"
-}
-```
-
-**Request Example:**
-```bash
-curl -X POST "https://api.careerverve.com/api/ads/metrics" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "user_id": "user123",
-    "ad_id": "ad-banner-001",
-    "event_type": "impression",
-    "metadata": {
-      "size": "banner",
-      "position": "sidebar"
-    }
-  }'
-```
-
-### GET /api/ads/config
-
-Retrieves advertisement configuration settings from environment variables.
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "adsEnabled": true,
-    "adProviders": ["google-adsense", "custom-provider"],
-    "maxAdsPerPage": 3
-  }
-}
-```
-
-**Request Example:**
-```bash
-curl -X GET "https://api.careerverve.com/api/ads/config"
-```
-
-**Ad Configuration Schema:**
-- `adsEnabled`: boolean - Whether ads are enabled globally
-- `adProviders`: array of strings - List of configured ad providers (empty if ads disabled)
-- `maxAdsPerPage`: number - Maximum number of ads allowed per page (0-10)
-
-### Security Notes
-
-- **User Anonymization:** User IDs are hashed using SHA-256 with a salt before storage
-- **Rate Limiting:** 100 requests per minute per anonymized user ID
-- **Input Validation:** All inputs are validated and sanitized
-- **No Data Retrieval:** Metrics endpoint is write-only for privacy protection
-- **Configuration Security:** Ad settings sourced from secure environment variables
-
-### Rate Limiting
-
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| `/api/ads/metrics` | 100 req/min | 1 minute per user |
-| `/api/ads/config` | 1000 req/min | 1 minute |
-
-### Ethical Considerations
-
-- **Privacy Protection:** User data is anonymized and cannot be reverse-engineered
-- **Non-Intrusive Ads:** Lazy loading prevents performance impact on page load
-- **User Consent:** Ads are only served when explicitly enabled in configuration
-- **Transparency:** Clear fallback messages when adblock is detected
-- **Fairness:** No discriminatory targeting based on protected characteristics
-
-## AI
-
-The AI endpoints provide AI-powered content processing capabilities including content rewriting, grammar/style suggestions, and content linting. These endpoints implement robust security measures, rate limiting, and ethical AI usage guidelines to ensure safe and responsible AI interactions.
-
-### POST /api/v1/ai/rewrite
-
-Rewrites content using AI with optional style specification. The endpoint supports various writing styles and maintains content meaning while improving clarity and professionalism.
-
-**Content-Type:** `application/json`
-
-**Request Body:**
-```json
-{
-  "content": "string (required) - Content to rewrite (max 10,000 characters)",
-  "style": "string (optional) - Writing style (e.g., 'professional', 'casual', 'formal')",
-  "userId": "string (optional) - User identifier for rate limiting"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": "Rewritten content with improved clarity and professionalism"
-}
-```
-
-**Response (400 - Validation Error):**
-```json
-{
-  "success": false,
-  "error": "Content is required and must be a string"
-}
-```
-
-**Response (400 - Content Too Long):**
-```json
-{
-  "success": false,
-  "error": "Content exceeds maximum length of 10,000 characters"
-}
-```
-
-**Response (400 - Unsafe Content):**
-```json
-{
-  "success": false,
-  "error": "Content contains unsafe content and cannot be processed."
-}
-```
-
-**Response (429 - Rate Limited):**
-```json
-{
-  "success": false,
-  "error": "Rate limit exceeded. Please try again later."
-}
-```
-
-**Response (503 - Service Unavailable):**
-```json
-{
-  "success": false,
-  "error": "Service temporarily unavailable. Please try again later."
-}
-```
-
-**Request Example:**
-```bash
-curl -X POST "https://api.careerverve.com/api/v1/ai/rewrite" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "content": "I have experience in software development and worked on many projects",
-    "style": "professional",
-    "userId": "user123"
-  }'
-```
-
-### POST /api/v1/ai/suggestions
-
-Provides grammar, style, and general improvement suggestions for content. Analyzes text and returns categorized suggestions to help improve writing quality.
-
-**Content-Type:** `application/json`
-
-**Request Body:**
-```json
-{
-  "content": "string (required) - Content to analyze (max 10,000 characters)",
-  "userId": "string (optional) - User identifier for rate limiting"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "grammar": [
-      "Consider using 'I have' instead of 'I got' for formal writing",
-      "Add comma after introductory phrase"
-    ],
-    "style": [
-      "Use more active voice to make writing more engaging",
-      "Vary sentence length for better readability"
-    ],
-    "suggestions": [
-      "Consider adding specific examples to support your claims",
-      "Use bullet points for better organization"
-    ]
-  }
-}
-```
-
-**Response (400 - Validation Error):**
-```json
-{
-  "success": false,
-  "error": "Content is required and must be a string"
-}
-```
-
-**Response (400 - Content Too Long):**
-```json
-{
-  "success": false,
-  "error": "Content exceeds maximum length of 10,000 characters"
-}
-```
-
-**Response (400 - Unsafe Content):**
-```json
-{
-  "success": false,
-  "error": "Content contains unsafe content and cannot be processed."
-}
-```
-
-**Response (429 - Rate Limited):**
-```json
-{
-  "success": false,
-  "error": "Rate limit exceeded. Please try again later."
-}
-```
-
-**Response (503 - Service Unavailable):**
-```json
-{
-  "success": false,
-  "error": "Service temporarily unavailable. Please try again later."
-}
-```
-
-**Request Example:**
-```bash
-curl -X POST "https://api.careerverve.com/api/v1/ai/suggestions" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "content": "I got experience in software development. I worked on many projects and learned alot.",
-    "userId": "user123"
-  }'
-```
-
-### POST /api/v1/ai/lint
-
-Detects linting issues, errors, and provides improvement suggestions for content. Performs comprehensive analysis including grammar, style, and structural issues with severity scoring.
-
-**Content-Type:** `application/json`
-
-**Request Body:**
-```json
-{
-  "content": "string (required) - Content to analyze (max 10,000 characters)",
-  "language": "string (optional) - Language/type of content (default: 'text')",
-  "userId": "string (optional) - User identifier for rate limiting"
+  "content": "Content to lint...",
+  "language": "text",
+  "userId": "user123",
+  "correlationId": "req-12347"
 }
 ```
 
@@ -944,113 +399,225 @@ Detects linting issues, errors, and provides improvement suggestions for content
     "issues": [
       {
         "type": "grammar",
-        "message": "Missing comma after introductory phrase",
+        "message": "Missing comma",
         "line": 1,
         "column": 15,
         "severity": "warning"
-      },
-      {
-        "type": "style",
-        "message": "Use active voice instead of passive",
-        "line": 2,
-        "column": 5,
-        "severity": "info"
       }
     ],
     "score": 85
+  },
+  "correlationId": "req-12347"
+}
+```
+
+### Actor System Integration
+
+The AI Processing Service uses an actor-based architecture for scalability and fault tolerance:
+
+- **Supervisor Actor**: Manages worker actors and handles failures
+- **Worker Actors**: Process individual AI requests
+- **Router Actor**: Distributes requests across worker pools
+- **Metrics Actor**: Collects performance metrics
+
+**Circuit Breaker Pattern:** Automatic failure isolation prevents cascade failures.
+
+## Document Generation Service
+
+**Port:** 3004
+**Technology:** Node.js with docx library
+
+### Endpoints
+
+#### POST /api/v1/documents/generate
+
+Generate a DOCX document from resume data.
+
+**Authentication:** Required (JWT)
+
+**Request Body:**
+```json
+{
+  "resumeData": {
+    "personalInfo": {
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john@example.com"
+    },
+    "summary": "Professional summary...",
+    "workExperience": [...],
+    "education": [...],
+    "skills": [...]
+  },
+  "template": "ats-safe",
+  "userId": "user123"
+}
+```
+
+**Response (200):** Binary DOCX file
+**Content-Type:** `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+**Content-Disposition:** `attachment; filename="resume.docx"`
+
+#### POST /api/v1/documents/import
+
+Import and parse DOCX resume file.
+
+**Authentication:** Required (JWT)
+**Content-Type:** `multipart/form-data`
+
+**Form Data:**
+- `file`: DOCX file (max 10MB)
+- `userId`: User identifier
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "personalInfo": {...},
+    "workExperience": [...],
+    "tables": [...],
+    "bullets": [...]
   }
 }
 ```
 
-**Response (400 - Validation Error):**
+## File Upload Service
+
+**Port:** 3005
+**Technology:** Node.js with multer and clamav
+
+### Endpoints
+
+#### POST /api/v1/upload
+
+Upload a file with security scanning.
+
+**Authentication:** Required (JWT)
+**Content-Type:** `multipart/form-data`
+
+**Form Data:**
+- `file`: File to upload (JPEG, PNG, GIF, PDF, DOCX - max 10MB)
+- `userId`: User identifier
+- `type`: File type category
+
+**Response (200):**
 ```json
 {
-  "success": false,
-  "error": "Content is required and must be a string"
+  "success": true,
+  "data": {
+    "id": "file-12345",
+    "filename": "resume.pdf",
+    "url": "/uploads/1705312200000-resume.pdf",
+    "size": 1024000,
+    "mimeType": "application/pdf",
+    "uploadedAt": "2024-01-15T10:00:00.000Z"
+  }
 }
 ```
 
-**Response (400 - Content Too Long):**
-```json
+#### GET /api/v1/upload/{id}
+
+Retrieve uploaded file information.
+
+**Authentication:** Required (JWT, user owns file)
+
+#### DELETE /api/v1/upload/{id}
+
+Delete uploaded file.
+
+**Authentication:** Required (JWT, user owns file)
+
+## Inter-Service Communication
+
+### Synchronous Communication
+
+Services communicate synchronously using HTTP with circuit breakers:
+
+```javascript
+// Example service-to-service call with circuit breaker
+const response = await circuitBreaker.call(async () => {
+  return axios.get('http://resume-management-service:3002/api/v1/resumes/user/' + userId, {
+    headers: {
+      'Authorization': 'Bearer ' + serviceToken,
+      'X-API-Key': process.env.RESUME_SERVICE_KEY
+    }
+  });
+});
+```
+
+### Asynchronous Communication
+
+Event-driven communication using message queues (RabbitMQ):
+
+**Events:**
+- `user.created`
+- `user.deleted`
+- `resume.updated`
+- `document.generated`
+
+### Service Discovery
+
+Kubernetes service discovery with DNS:
+- `user-management-service.default.svc.cluster.local`
+- `resume-management-service.default.svc.cluster.local`
+
+## Actor System Integration
+
+The AI Processing Service implements an actor-based architecture:
+
+### Actor Hierarchy
+
+```
+SupervisorActor
+├── RouterActor
+│   ├── WorkerActorPool (10 actors)
+│   ├── MetricsActor
+│   └── HealthActor
+└── CircuitBreakerActor
+```
+
+### Message Patterns
+
+**Request-Response:**
+```csharp
+// Worker actor processes AI requests
+public async Task ReceiveAsync(object message)
 {
-  "success": false,
-  "error": "Content exceeds maximum length of 10,000 characters"
+    switch (message)
+    {
+        case RewriteRequest req:
+            var result = await _aiService.RewriteAsync(req.Content, req.Style);
+            Sender.Tell(new RewriteResponse(result));
+            break;
+    }
 }
 ```
 
-**Response (400 - Unsafe Content):**
-```json
-{
-  "success": false,
-  "error": "Content contains unsafe content and cannot be processed."
-}
+**Fire-and-Forget:**
+```csharp
+// Metrics collection
+Context.System.EventStream.Subscribe(Self, typeof(MetricMessage));
 ```
 
-**Response (429 - Rate Limited):**
-```json
-{
-  "success": false,
-  "error": "Rate limit exceeded. Please try again later."
-}
-```
+### Fault Tolerance
 
-**Response (503 - Service Unavailable):**
-```json
-{
-  "success": false,
-  "error": "Service temporarily unavailable. Please try again later."
-}
-```
-
-**Request Example:**
-```bash
-curl -X POST "https://api.careerverve.com/api/v1/ai/lint" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "content": "I got experience in software development. Projects were worked on by me.",
-    "language": "text",
-    "userId": "user123"
-  }'
-```
-
-### Security Notes
-
-- **Input Validation:** All content is validated for length, type, and safety before processing
-- **Rate Limiting:** 10 requests per minute per user across all AI endpoints
-- **Content Sanitization:** Input prompts are sanitized to prevent injection attacks
-- **Output Validation:** AI-generated content is validated for safety and appropriateness
-- **Caching:** Results are cached to improve performance and reduce API costs
-- **Circuit Breaker:** Automatic failure isolation prevents cascade failures
-- **Logging:** All AI interactions are logged for security monitoring
-
-### Rate Limiting
-
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| `/api/v1/ai/rewrite` | 10 req/min | 1 minute per user |
-| `/api/v1/ai/suggestions` | 10 req/min | 1 minute per user |
-| `/api/v1/ai/lint` | 10 req/min | 1 minute per user |
-
-### Ethical Considerations
-
-- **Privacy Protection:** User content is processed temporarily and not stored without consent
-- **Fairness:** AI processing does not discriminate based on protected characteristics
-- **Transparency:** Users are informed about AI processing and can opt out
-- **Data Minimization:** Only necessary data is processed for the requested operation
-- **User Consent:** AI features require explicit user consent and understanding
-- **Bias Mitigation:** Regular audits ensure AI responses are fair and unbiased
-- **Human Oversight:** Critical decisions involving sensitive data include human review
+- **Supervisor Strategy:** Restart failed actors
+- **Circuit Breaker:** Prevent cascade failures
+- **Backoff Supervision:** Exponential backoff for retries
 
 ## Error Codes
 
-All API errors follow a standardized format:
+All services use standardized error responses:
 
 ```json
 {
   "success": false,
   "error": "Error message",
   "code": "ERROR_CODE",
-  "details": { ... }
+  "correlationId": "req-12345",
+  "timestamp": "2024-01-15T10:00:00.000Z",
+  "service": "service-name"
 }
 ```
 
@@ -1059,201 +626,190 @@ All API errors follow a standardized format:
 | Code | HTTP Status | Description |
 |------|-------------|-------------|
 | `VALIDATION_ERROR` | 400 | Input validation failed |
-| `DATABASE_ERROR` | 500 | Database operation failed |
-| `NOT_FOUND` | 404 | Resource not found |
 | `UNAUTHORIZED` | 401 | Authentication required |
 | `FORBIDDEN` | 403 | Insufficient permissions |
+| `NOT_FOUND` | 404 | Resource not found |
+| `CONFLICT` | 409 | Resource conflict |
+| `UNPROCESSABLE_ENTITY` | 422 | Business logic error |
 | `INTERNAL_ERROR` | 500 | Internal server error |
-| `BAD_REQUEST` | 400 | Invalid request format |
-
-### Validation Error Example
-
-```json
-{
-  "success": false,
-  "error": "Validation failed",
-  "code": "VALIDATION_ERROR",
-  "details": {
-    "email": "Invalid email format",
-    "title": "Title is required and must be less than 100 characters"
-  }
-}
-```
+| `SERVICE_UNAVAILABLE` | 503 | Service temporarily unavailable |
 
 ## Rate Limiting
 
-The API implements rate limiting to prevent abuse:
+### Per-Service Limits
 
-- **General endpoints:** 100 requests per minute per IP
-- **Authentication endpoints:** 5 requests per minute per IP
-- **File upload endpoints:** 10 requests per hour per user
+| Service | Endpoint | Limit | Window |
+|---------|----------|-------|--------|
+| User Management | All | 1000 req/min | 1 minute |
+| Resume Management | All | 2000 req/min | 1 minute |
+| AI Processing | AI endpoints | 100 req/min/user | 1 minute |
+| Document Generation | Generate | 50 req/hour/user | 1 hour |
+| File Upload | Upload | 20 req/hour/user | 1 hour |
 
-Rate limit headers are included in responses:
+### Rate Limit Headers
 
 ```
 X-RateLimit-Limit: 100
 X-RateLimit-Remaining: 95
 X-RateLimit-Reset: 1705312800
+X-RateLimit-Retry-After: 60
 ```
 
 ## Security
 
-### Security Headers
+### Authentication & Authorization
 
-All API responses include comprehensive security headers:
+- **JWT Tokens:** Issued by User Management Service with 1-hour expiration
+- **API Keys:** Service-to-service authentication using environment variables
+- **Role-Based Access:** User, Admin, Service roles
 
-```
-X-Content-Type-Options: nosniff
-X-Frame-Options: SAMEORIGIN
-X-XSS-Protection: 1; mode=block
-Referrer-Policy: strict-origin-when-cross-origin
-Permissions-Policy: geolocation=(), microphone=()
-Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
-```
+### Data Protection
 
-### Authentication Requirements
-
-- User-specific endpoints require valid session
-- File uploads require authenticated users
-- Admin endpoints require appropriate permissions
-
-### Data Privacy
-
-- All data transmission over HTTPS
-- Sensitive data is encrypted at rest
-- User consent required for data processing
-- GDPR-compliant data deletion endpoints
+- **Encryption at Rest:** AES-256 encryption for sensitive fields
+- **Encryption in Transit:** TLS 1.3 for all communications
+- **Field-Level Encryption:** MongoDB field encryption for PII
 
 ### Input Validation
 
-- All inputs are validated and sanitized
-- File uploads restricted to allowed types and sizes
-- SQL injection prevention through parameterized queries
-- XSS prevention through input sanitization
+- **Schema Validation:** Joi/Yup validation schemas
+- **Sanitization:** Input sanitization to prevent XSS
+- **File Scanning:** ClamAV virus scanning for uploads
 
-## SDKs and Libraries
+### Security Headers
 
-### JavaScript/TypeScript
+```
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+X-XSS-Protection: 1; mode=block
+Strict-Transport-Security: max-age=63072000
+Content-Security-Policy: default-src 'self'
+```
+
+## Compliance
+
+### GDPR Compliance
+
+- **Data Minimization:** Only collect necessary user data
+- **Right to Erasure:** Complete data deletion endpoints
+- **Audit Logging:** Immutable audit logs for all user actions
+- **Consent Management:** Explicit user consent tracking
+
+### Data Privacy
+
+- **Anonymization:** User data anonymized for analytics
+- **Retention Policies:** Automatic data cleanup after retention periods
+- **Data Portability:** User data export functionality
+
+### Ethical AI Usage
+
+- **Bias Mitigation:** Regular AI model audits
+- **Transparency:** Clear disclosure of AI processing
+- **User Consent:** Opt-in for AI features
+- **Fairness:** AI processing does not discriminate
+
+## OpenAPI Specifications
+
+Complete OpenAPI 3.0 specifications are available in individual service repositories:
+
+- [User Management OpenAPI Spec](./services/user-management/openapi.yaml)
+- [Resume Management OpenAPI Spec](./services/resume-management/openapi.yaml)
+- [AI Processing OpenAPI Spec](./services/ai-processing/openapi.yaml)
+- [Document Generation OpenAPI Spec](./services/document-generation/openapi.yaml)
+- [File Upload OpenAPI Spec](./services/file-upload/openapi.yaml)
+
+## SDKs and Examples
+
+### JavaScript Client
 
 ```javascript
-// Example API client
 class CareerVerveAPI {
-  constructor(baseURL = '/api') {
-    this.baseURL = baseURL;
+  constructor(baseURLs) {
+    this.baseURLs = baseURLs;
   }
 
-  async getResumes(params = {}) {
-    const query = new URLSearchParams(params);
-    const response = await fetch(`${this.baseURL}/resumes?${query}`);
-    return response.json();
+  async createUser(userData) {
+    return this.callService('user-management', 'POST', '/api/v1/users', userData);
   }
 
-  async createResume(data) {
-    const response = await fetch(`${this.baseURL}/resumes`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+  async getUserResumes(userId) {
+    return this.callService('resume-management', 'GET', `/api/v1/resumes/user/${userId}`);
+  }
+
+  async rewriteContent(content, style) {
+    return this.callService('ai-processing', 'POST', '/api/v1/ai/rewrite', {
+      content, style
     });
-    return response.json();
   }
 }
 ```
 
-### cURL Examples
+## Monitoring and Observability
 
-```bash
-# Get resumes with pagination
-curl -X GET "https://api.careerverve.com/api/resumes?page=1&limit=10" \
-  -H "Authorization: Bearer YOUR_TOKEN"
+### Health Checks
 
-# Create a new resume
-curl -X POST "https://api.careerverve.com/api/resumes" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{
-    "title": "My Resume",
-    "locale": "en-US",
-    "personalInfo": {
-      "firstName": "John",
-      "lastName": "Doe",
-      "email": "john@example.com"
-    }
-  }'
+All services expose health endpoints at `/health`:
 
-# Upload a file
-curl -X POST "https://api.careerverve.com/api/upload" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "file=@resume.pdf"
+```json
+{
+  "status": "healthy",
+  "service": "service-name",
+  "version": "1.0.0",
+  "uptime": 3600,
+  "checks": {
+    "database": "healthy",
+    "dependencies": "healthy"
+  }
+}
 ```
 
-## Changelog
+### Metrics
 
-### Version 1.0.0
-- Initial release
-- Basic CRUD operations for resumes
-- Cover letter generation
-- User authentication and management
-- File upload functionality
-- Health check and metrics endpoints
-- Comprehensive error handling and validation
+Prometheus-compatible metrics at `/metrics`:
 
-### Version 1.1.0 (Phase 12)
-- Added DOCX import and generation endpoints
-- DOCX parsing with table and bullet extraction
-- ATS-safe DOCX document generation
-- Enhanced security for document processing
-- Ethical considerations for sensitive resume data handling
+```
+# HELP http_requests_total Total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{service="user-management",method="GET",status="200"} 1500
+```
 
-### Version 1.2.0 (Phase 13)
-- Added advertisement tracking and configuration endpoints
-- Ad metrics tracking with user privacy protection via anonymization
-- Ad configuration management via environment variables
-- Frontend AdComponent with lazy loading and adblock detection
-- Ethical ad serving with user consent and non-intrusive placement
+### Logging
+
+Structured logging with correlation IDs:
+
+```json
+{
+  "timestamp": "2024-01-15T10:00:00.000Z",
+  "level": "info",
+  "service": "user-management",
+  "correlationId": "req-12345",
+  "message": "User created",
+  "userId": "user123"
+}
+```
+
+## Versioning
+
+API versioning follows semantic versioning:
+
+- **Major Version:** Breaking changes (URL path: `/api/v2/`)
+- **Minor Version:** New features, backward compatible
+- **Patch Version:** Bug fixes, no API changes
+
+### Backward Compatibility
+
+- Deprecated endpoints marked with `Deprecation` header
+- Graceful deprecation with 12-month migration period
+- Version headers for client compatibility
 
 ## Support
 
-For API support, please contact:
-- **Email:** api-support@careerverve.com
+For API support and questions:
+
 - **Documentation:** https://docs.careerverve.com
-- **Status Page:** https://status.careerverve.com
+- **API Status:** https://status.careerverve.com
+- **Developer Portal:** https://developers.careerverve.com
+- **Support Email:** api-support@careerverve.com
 
-## Rate Limits
+---
 
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| `/api/health` | 1000 req/min | 1 minute |
-| `/api/resumes` | 100 req/min | 1 minute |
-| `/api/auth/*` | 5 req/min | 1 minute |
-| `/api/upload` | 10 req/hour | 1 hour |
-| `/api/import-docx` | 10 req/hour | 1 hour |
-| `/api/generate-docx` | 50 req/hour | 1 hour |
-| `/api/user/*` | 50 req/min | 1 minute |
-| `/api/ads/metrics` | 100 req/min | 1 minute per user |
-| `/api/ads/config` | 1000 req/min | 1 minute |
-
-## Webhooks
-
-The API supports webhooks for real-time notifications:
-
-### Supported Events
-- `resume.created`
-- `resume.updated`
-- `resume.deleted`
-- `user.created`
-- `user.deleted`
-
-### Webhook Payload Example
-```json
-{
-  "event": "resume.created",
-  "timestamp": "2024-01-15T10:00:00.000Z",
-  "data": {
-    "id": "507f1f77bcf86cd799439011",
-    "title": "New Resume",
-    "userId": "user123"
-  }
-}
-```
-
-To register a webhook, contact support with your endpoint URL and desired events.
+*This documentation is automatically generated and updated with each deployment. Last updated: 2024-01-15*

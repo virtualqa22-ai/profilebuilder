@@ -1,172 +1,174 @@
 # Architecture Overview
 
-## Current Architecture
+## Current Microservices Architecture
 
-The CareerVerve application currently follows a monolithic architecture built on Next.js, integrating frontend, backend, and API layers within a single codebase. This structure supports rapid development and deployment but may limit scalability for growing user bases.
+The CareerVerve application follows a microservices architecture designed for scalability, resilience, and maintainability. Each logical unit operates as an independent service with its own database, API, and deployment lifecycle, orchestrated via Kubernetes with Istio service mesh.
 
 ### Key Components
 
 - **Frontend Layer**: React-based UI with Next.js App Router, featuring components for resume building, internationalization, state management via Zustand, and AdComponent for privacy-compliant advertisement serving.
-- **Backend Layer**: Server-side logic including Mongoose models for MongoDB, utility libraries for validations and error handling, middleware for security and rate limiting, and ad metrics tracking with user anonymization.
-- **API Layer**: Next.js API routes handling authentication (NextAuth), CRUD operations for resumes and cover letters, file uploads, PDF generation using Puppeteer, DOCX import/export using mammoth and docx libraries, and ad metrics tracking and configuration endpoints.
-- **Database**: Single MongoDB instance with encryption for sensitive fields, including anonymized ad metrics collections.
-- **Authentication**: NextAuth.js for session management and OAuth providers.
-- **Ad Service**: Integrated ad serving system with Google AdSense integration, lazy loading, adblock detection, and privacy-focused metrics collection.
-- **Testing**: Jest for unit/integration tests, Playwright for e2e tests.
-- **Deployment**: Monolithic build and deployment via Next.js.
+- **Microservices Layer**: Independent services handling specific business domains:
+  - **User Management Service**: Handles user authentication, profiles, and consent management.
+  - **Resume Management Service**: Manages resume creation, storage, templates, and document generation.
+  - **AI Processing Service**: Provides AI-powered linting, rewriting, and suggestions for resumes and cover letters.
+  - **Document Generation Service**: Handles PDF and DOCX generation and export operations.
+  - **File Upload Service**: Manages secure file uploads, parsing, and storage.
+- **API Gateway**: Nginx-based gateway for routing, authentication, and rate limiting across services.
+- **Service Mesh**: Istio for inter-service communication, circuit breakers, and observability.
+- **Database Layer**: Separate MongoDB instances per service with encryption for sensitive fields.
+- **Authentication**: JWT-based authentication with OAuth providers via User Management Service.
+- **Ad Service**: Distributed ad serving with privacy-focused metrics collection.
+- **Testing**: Jest for unit/integration tests, Playwright for e2e tests, contract testing for service interfaces.
+- **Deployment**: Containerized services deployed via Kubernetes with Helm charts.
+
+### Actor System Design
+
+The system implements agentic design patterns using a hierarchical supervisor-worker architecture for AI operations and complex workflows:
+
+#### Supervisor-Worker Pattern
+- **Supervisor Agents**: Orchestrate complex tasks, delegate work to worker agents, handle failures, and ensure task completion.
+- **Worker Agents**: Execute specific operations (AI processing, document generation, data validation).
+- **Communication**: Event-driven messaging via RabbitMQ with correlation IDs for request tracing.
+- **Resilience**: Supervisor agents implement retry logic, circuit breakers, and escalation paths for uncertain cases.
+
+#### Multi-Agent Collaboration (A2A/MCP)
+- **Agent-to-Agent Protocols**: Secure inter-agent communication using standardized protocols.
+- **Task Delegation**: Hierarchical delegation for complex operations (e.g., AI processing delegates to specialized sub-agents).
+- **Oversight Boundaries**: Agents escalate uncertain cases to human operators with guardrails and audit trails.
+
+### Resilience Features
+
+#### Circuit Breakers
+- **Implementation**: Hystrix-style circuit breakers in Istio service mesh.
+- **Configuration**: Automatic failure detection with configurable thresholds (failure rate > 50% triggers open state).
+- **Recovery**: Half-open state testing, automatic recovery when service health improves.
+
+#### Retry Mechanisms
+- **Exponential Backoff**: Configurable retry policies with jitter to prevent thundering herd.
+- **Idempotency**: Request deduplication using correlation IDs.
+- **Timeout Handling**: Service-level timeouts with graceful degradation.
+
+#### Failure Isolation
+- **Bulkheads**: Resource isolation per service to prevent cascade failures.
+- **Graceful Degradation**: Services continue operating with reduced functionality during partial failures.
+- **Fallback Strategies**: Cached responses or simplified operations during service unavailability.
 
 ### Data Flow
 
 1. User interacts with frontend components.
-2. Frontend calls API routes.
-3. API routes use backend libraries and models to interact with MongoDB.
-4. Responses are returned through the API to the frontend.
+2. Frontend calls API Gateway with authenticated requests.
+3. API Gateway routes to appropriate microservice.
+4. Service processes request, potentially coordinating with other services via service mesh.
+5. Responses flow back through the same path with correlation IDs for tracing.
+6. Actor system handles complex operations with supervisor-worker delegation.
 
 ### Strengths
 
-- Simplified development and debugging.
-- Shared codebase for consistency.
-- Easy to deploy as a single unit.
+- Improved fault isolation and scalability.
+- Independent service deployment and scaling.
+- Technology diversity per service requirements.
+- Enhanced resilience through distributed architecture.
 
 ### Limitations
 
-- Tight coupling between components.
-- Scalability challenges with increasing load.
-- Single point of failure for the entire application.
+- Increased complexity in orchestration and communication.
+- Data consistency challenges across services.
+- Higher operational overhead and monitoring requirements.
+- Distributed transaction management complexity.
 
-## Future Microservices Plan
+## Microservices Implementation
 
 To address scalability, maintainability, and resilience, the architecture will evolve into a microservices-based system. Each logical unit will be an independent service with its own database, API, and deployment, orchestrated via Kubernetes.
 
-### Proposed Microservices
+### Implemented Microservices
 
-- **Authentication Service**: Manages user authentication, session handling, and OAuth providers.
+- **User Management Service**: Manages user authentication, profiles, consent management, and OAuth providers.
 - **Resume Management Service**: Handles resume creation, storage, retrieval, template management, and document generation (PDF, DOCX).
-- **AI Processing Service**: Provides AI-powered linting, rewriting, and suggestions for resumes and cover letters.
-- **Cover Letter Service**: Generates and manages cover letters, with PDF export capabilities.
-- **Document Processing Service**: Handles file uploads, parsing (PDF, DOCX), and import/export operations.
-- **Job Description Parser Service**: Parses job descriptions for matching algorithms and insights.
-- **Ad Serving and Analytics Service**: Manages advertisement serving, metrics tracking with privacy protection, adblock detection, and ethical ad placement.
-- **Privacy and Compliance Service**: Ensures data privacy, consent management, and regulatory compliance.
-- **Audit and Security Service**: Handles audit logging, security monitoring, and access controls.
-- **Localization Service**: Manages internationalization, locale data, and language support.
-- **Health and Monitoring Service**: Provides health checks, centralized logging, and metrics collection.
-- **Caching Service**: Manages distributed caching for performance optimization.
-- **Admin Service**: Handles administrative functions, settings, and system configuration.
-- **API Gateway**: Nginx or Kong for routing, authentication, and rate limiting across services.
+- **AI Processing Service**: Provides AI-powered linting, rewriting, and suggestions for resumes and cover letters using agentic design patterns.
+- **Document Generation Service**: Generates and manages cover letters and documents, with PDF export capabilities.
+- **File Upload Service**: Handles secure file uploads, parsing (PDF, DOCX), and import/export operations.
+- **API Gateway**: Nginx-based routing, authentication, and rate limiting across services.
 - **Shared Libraries**: Common utilities (validations, error handling) as shared packages.
 
-### Architecture Diagram (Conceptual)
+### Architecture Diagram
 
 ```mermaid
 graph TD
-    A[Frontend Next.js] --> B[API Gateway]
-    B --> C[Authentication Service]
-    B --> D[Resume Management Service]
-    B --> E[AI Processing Service]
-    B --> F[Cover Letter Service]
-    B --> G[Document Processing Service]
-    B --> H[Job Description Parser Service]
-    B --> I[Ad Serving and Analytics Service]
-    B --> J[Privacy and Compliance Service]
-    B --> K[Audit and Security Service]
-    B --> L[Localization Service]
-    B --> M[Health and Monitoring Service]
-    B --> N[Caching Service]
-    B --> O[Admin Service]
-    
-    C --> C1[Auth DB]
-    D --> D1[Resume DB]
-    E --> E1[AI DB]
-    F --> F1[Cover Letter DB]
-    G --> G1[Document DB]
-    H --> H1[JD Parser DB]
-    I --> I1[Ad Analytics DB]
-    J --> J1[Privacy DB]
-    K --> K1[Audit DB]
-    L --> L1[Localization DB]
-    M --> M1[Monitoring DB]
-    N --> N1[Cache DB]
-    O --> O1[Admin DB]
+     A[Frontend Next.js] --> B[API Gateway]
+     B --> C[User Management Service]
+     B --> D[Resume Management Service]
+     B --> E[AI Processing Service]
+     B --> F[Document Generation Service]
+     B --> G[File Upload Service]
+
+     C --> C1[User DB]
+     D --> D1[Resume DB]
+     E --> E1[AI DB]
+     F --> F1[Document DB]
+     G --> G1[File DB]
+
+     E --> H[Supervisor Agent]
+     H --> I[Worker Agent 1]
+     H --> J[Worker Agent 2]
+     H --> K[Worker Agent N]
+
+     B --> L[Istio Service Mesh]
+     L --> M[Circuit Breaker]
+     L --> N[Retry Logic]
+     L --> O[Load Balancing]
 ```
 
 ### Key Principles
 
-- **Service Independence**: Each microservice has its own database and deployment, avoiding shared state.
-- **API-First Design**: Services expose RESTful APIs with versioning for backward compatibility.
-- **Resilience**: Circuit breakers (e.g., Hystrix) and retries for fault tolerance.
-- **Scalability**: Kubernetes auto-scaling based on load.
-- **Observability**: Centralized logging with correlation IDs, metrics via Prometheus/Grafana.
-- **Migration Strategy**: Phased rollout with API stubs during transition; DB migrations with rollback plans.
+- **Service Independence**: Each microservice has its own database and deployment, avoiding shared state and tight coupling.
+- **API-First Design**: Services expose RESTful APIs with semantic versioning for backward compatibility.
+- **Resilience**: Istio service mesh implements circuit breakers, retries, and failure isolation.
+- **Scalability**: Kubernetes Horizontal Pod Autoscaler (HPA) based on CPU/memory metrics.
+- **Observability**: Centralized logging with correlation IDs, Prometheus/Grafana metrics, and health checks.
+- **Agentic Design**: Hierarchical supervisor-worker patterns for AI operations with escalation paths.
+- **Security-First**: Input validation, least privilege access, and secrets management across all services.
 
-### Detailed Migration Plan
+### Service Implementation Details
 
-#### Phased Migration Approach
-The migration will follow a phased approach starting with less critical services to minimize risk and allow for iterative testing and validation. Each phase includes database migration, API development, deployment, and testing.
+#### Service Architecture
+Each microservice follows a consistent internal structure:
+- **API Layer**: Express.js REST APIs with input validation and error handling.
+- **Business Logic**: Service-specific logic with standardized error codes.
+- **Data Layer**: Mongoose models with encryption for sensitive fields.
+- **Health Checks**: `/health` endpoints for Kubernetes liveness/readiness probes.
+- **Metrics**: Prometheus-compatible `/metrics` endpoints.
 
-1. **Phase 1: Infrastructure and Supporting Services (Weeks 1-4)**
-   - Deploy API Gateway, Health and Monitoring Service, Caching Service, and Localization Service.
-   - Establish service mesh (Istio) for inter-service communication.
-   - Set up centralized logging and monitoring infrastructure.
+#### Database Design
+- **DB-First Approach**: Database schemas defined before API implementation.
+- **Independent Databases**: Each service owns its data domain completely.
+- **Encryption**: Sensitive fields encrypted at rest using AES-256.
+- **Migrations**: Version-controlled migration scripts with rollback capabilities.
 
-2. **Phase 2: Security and Compliance Services (Weeks 5-8)**
-   - Migrate Privacy and Compliance Service, Audit and Security Service.
-   - Implement security-first principles across all services.
+#### API Design
+- **Semantic Versioning**: APIs versioned as `/v1/`, `/v2/` with backward compatibility.
+- **RESTful Design**: Standard HTTP methods with consistent response formats.
+- **Documentation**: OpenAPI/Swagger specs for all service APIs.
+- **Deprecation**: Graceful API deprecation with sunset headers and migration guides.
 
-3. **Phase 3: Core Business Services (Weeks 9-16)**
-   - Migrate Authentication Service, Resume Management Service, Cover Letter Service, Document Processing Service, Job Description Parser Service, AI Processing Service.
-   - Ensure API stubs are in place for frontend integration during transition.
+#### Inter-Service Communication
+- **Service Mesh**: Istio handles service discovery, load balancing, and resilience.
+- **Protocols**: REST for external APIs, gRPC for internal high-performance calls.
+- **Authentication**: JWT tokens with service-specific scopes and permissions.
+- **Correlation IDs**: Request tracing across service boundaries.
 
-4. **Phase 4: Advanced Services (Weeks 17-20)**
-   - Migrate Ad Serving and Analytics Service, Admin Service.
-   - Finalize frontend integration and remove monolithic dependencies.
-
-#### Database Migration Strategies
-Following DB-first approach, each service will have its own MongoDB instance. Migrations will use custom scripts with rollback capabilities.
-
-- **Separate Databases**: Each service gets a dedicated MongoDB database to ensure independence.
-- **Migration Scripts**: Use MongoDB migration tools or custom scripts with version control. Each migration includes forward and rollback scripts.
-- **Data Migration**: Extract data from monolithic DB using ETL processes, validate integrity, and load into new DBs.
-- **Rollback Strategy**: Maintain data snapshots; rollback scripts restore previous state. Parallel run monolithic and microservices during transition.
-
-Example for Resume Management Service:
-- Create new DB: `resume_db`
-- Migration script: Extract resumes from monolithic DB, transform, load into `resume_db`
-- Rollback: Drop `resume_db` and redirect to monolithic DB
-
-#### API Versioning and Inter-Service Communication
-- **Versioning**: APIs use semantic versioning (e.g., `/v1/resumes`, `/v2/resumes`). Graceful deprecation with sunset headers.
-- **Communication Protocols**: RESTful APIs for external, gRPC for internal efficiency. Service mesh (Istio) for resilience with circuit breakers and retries.
-- **Authentication**: JWT tokens via API Gateway for inter-service calls.
-
-#### Deployment and Orchestration
-- **Containerization**: Each service in Docker containers.
-- **Orchestration**: Kubernetes with Helm charts for deployment.
-- **Auto-Scaling**: Horizontal Pod Autoscaler (HPA) based on CPU/memory metrics.
-- **Load Balancing**: Kubernetes services with ingress for external access.
-
-#### Testing and Validation Strategies
-- **Contract Testing**: Pact or similar for API contracts between services.
-- **Integration Testing**: Test inter-service communication and data flow.
-- **End-to-End Testing**: Validate full user journeys with microservices.
-- **Performance Testing**: Load tests to ensure scalability; benchmarks against SLAs.
-- **Validation During Migration**: Canary deployments, feature flags, and A/B testing.
-
-#### Rollback Plans and Risk Mitigation
-- **Rollback Plans**: Each phase includes rollback scripts for DB and code. Keep monolithic running in parallel for 4 weeks post-migration.
-- **Risk Mitigation**:
-  - Data backups before each migration.
-  - Monitoring dashboards for anomalies.
-  - Gradual traffic shifting (10% to microservices initially).
-  - Escalation paths for critical issues.
-  - Pilot with guardrails for AI services.
+#### Deployment and Scaling
+- **Containerization**: Docker containers with multi-stage builds for optimization.
+- **Orchestration**: Kubernetes deployments with Helm charts.
+- **Auto-Scaling**: HPA based on CPU utilization (target: 70%) and custom metrics.
+- **Resource Limits**: Configured requests/limits to ensure predictable performance.
 
 ### Service Boundaries and Communication Patterns
-- **Boundaries**: Each service owns its domain data and logic. No shared DBs; data accessed via APIs only.
+- **Boundaries**: Each service owns its domain data and logic completely. No shared databases; all data access through service APIs.
 - **Communication Patterns**:
-  - Synchronous: REST/gRPC for real-time operations (e.g., Authentication Service validates users for Resume Service).
-  - Asynchronous: Message queues (RabbitMQ) for events (e.g., Audit Service logs actions from other services).
-  - Event-Driven: Publish-subscribe for decoupled interactions.
+    - Synchronous: REST APIs for real-time operations (e.g., User Management Service validates tokens for Resume Service).
+    - Asynchronous: RabbitMQ message queues for events (e.g., AI Processing Service publishes completion events).
+    - Event-Driven: Publish-subscribe patterns for decoupled interactions between services.
+    - Agent-to-Agent: MCP protocols for secure AI agent collaboration within and across services.
 
 ### Benefits
 
@@ -182,14 +184,21 @@ Example for Resume Management Service:
 
 ## Ethical Considerations
 
-- **Privacy**: Microservices enable better data isolation, reducing exposure in breaches. Encryption and access controls are enforced per service. Ad metrics use SHA-256 anonymization to protect user identities.
-- **Fairness**: Service design ensures neutral algorithms; separate services prevent bias propagation. Ad serving avoids discriminatory targeting based on protected characteristics.
-- **Data Minimization**: Each service collects only necessary data, minimizing retention and processing. Ad metrics are write-only with no retrieval capabilities.
-- **Non-Intrusive Ads**: Lazy loading and graceful adblock handling ensure ads do not degrade user experience.
-- **User Consent**: Ads are only served when explicitly enabled in configuration, respecting user preferences.
+- **Privacy**: Microservices architecture enables granular data isolation, minimizing breach impact. Each service implements encryption for sensitive fields and maintains independent audit trails. AI processing uses differential privacy techniques to protect user data during model training and inference.
+- **Fairness**: AI agents implement fairness constraints and bias detection. Multi-agent systems include oversight mechanisms to prevent discriminatory outcomes. Ad serving algorithms avoid targeting based on protected characteristics and maintain demographic neutrality.
+- **Data Minimization**: Services follow data minimization principles, collecting only essential data for their functions. User data retention policies include automatic deletion schedules. AI agents use federated learning approaches to minimize centralized data collection.
+- **Transparency**: Agent capabilities, limitations, and decision-making processes are documented and auditable. Users receive explanations for AI-generated content and recommendations.
+- **Human Oversight**: AI agents escalate uncertain cases to human operators through defined guardrails. Multi-agent collaboration includes human-in-the-loop validation for critical decisions.
+- **Accountability**: All agent actions are logged with correlation IDs for traceability. Service independence ensures accountability per domain without cross-contamination.
+- **User Consent**: Granular consent management across services with clear opt-in/opt-out mechanisms. AI features require explicit user consent with transparent data usage explanations.
 
 ## Compliance Notes
 
-- Follows DB-first and API-first principles.
-- Plans for graceful API deprecation and multi-agent protocols for future AI integrations.
-- Security-first with input validation and secrets management across services.
+- **Architecture & Design**: Implements microservices with service independence, circuit breakers, Kubernetes auto-scaling, API versioning, DB-first approach, and multi-agent collaboration protocols.
+- **Coding Standards**: Centralized validation/error handling, DRY principles, standardized error codes, and LLM-assisted code optimization.
+- **Documentation**: Comprehensive service READMEs, architecture overviews, agent capability documentation, and ethical considerations for sensitive data.
+- **Testing & Quality**: Contract testing, 80%+ coverage, early V&V, technical debt monitoring, and agent performance benchmarks.
+- **Security**: Security-first design, secrets management, vulnerability scanning, AI threat modeling, and regulatory compliance.
+- **DevOps & Process**: Docker/Kubernetes orchestration, automated CI/CD, semantic versioning, metrics tracking, and guardrails for AI agents.
+- **Observability & Monitoring**: Health endpoints, centralized logging with correlation IDs, Prometheus metrics, and anomaly detection.
+- **Configuration & Resource Management**: Environment variable configuration, resource optimization, and cost monitoring.

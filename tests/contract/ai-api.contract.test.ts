@@ -1,31 +1,28 @@
 /**
  * AI API Contract Tests
  *
- * Contract testing to ensure frontend and backend stay aligned.
+ * Contract testing to ensure frontend and microservices stay aligned.
  * Tests verify API response schemas and request formats match expectations.
+ * Updated for microservices architecture - tests AI processing microservice contracts.
  */
 
 /// <reference types="jest" />
 
 import request from 'supertest';
 import { createServer } from 'http';
-import { POST as RewritePost } from '../../api/v1/ai/rewrite/route';
-import { POST as SuggestionsPost } from '../../api/v1/ai/suggestions/route';
-import { POST as LintPost } from '../../api/v1/ai/lint/route';
 
-// Mock the AI service for contract testing
-jest.mock('../../backend/lib/aiService', () => ({
-  getAIService: jest.fn(() => ({
-    rewriteContent: jest.fn(),
-    getSuggestions: jest.fn(),
-    detectLintIssues: jest.fn(),
-  })),
-}));
+// Mock axios for microservice communication
+jest.mock('axios');
+import axios from 'axios';
 
-// Mock security headers
-jest.mock('../../backend/lib/errorHandler', () => ({
-  applySecurityHeaders: jest.fn((response) => response),
-}));
+// Mock circuit breaker for resilience testing
+jest.mock('opossum', () => {
+  return jest.fn().mockImplementation(() => ({
+    fire: jest.fn(),
+    on: jest.fn(),
+    stats: { failures: 0, successful: 0 },
+  }));
+});
 
 describe('AI API Contract Tests', () => {
   let server: any;

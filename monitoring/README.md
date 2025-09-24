@@ -1,45 +1,56 @@
 # ProfileBuilder Observability & Monitoring
 
-This directory contains the monitoring and observability setup for the ProfileBuilder application, implementing comprehensive monitoring using Prometheus, Grafana, and alerting systems.
+This directory contains the monitoring and observability setup for the ProfileBuilder microservices application, implementing comprehensive monitoring using Prometheus, Grafana, and alerting systems across all services.
 
 ## Overview
 
 The observability stack includes:
-- **Health Checks**: `/api/health` endpoint for service health monitoring
-- **Metrics Collection**: Prometheus-compatible metrics at `/api/metrics`
-- **Centralized Logging**: Winston-based logging with correlation IDs
-- **Dashboards**: Grafana dashboards for visualization
-- **Alerting**: Prometheus alerting rules for anomaly detection
+- **Health Checks**: `/health` endpoints for each microservice health monitoring
+- **Metrics Collection**: Prometheus-compatible metrics at `/metrics` endpoints per service
+- **Centralized Logging**: Winston-based logging with correlation IDs across services
+- **Service Mesh Monitoring**: Istio telemetry and distributed tracing
+- **Dashboards**: Grafana dashboards for visualization and alerting
+- **Alerting**: Prometheus alerting rules for anomaly detection and incident response
 
 ## Components
 
-### 1. Health Check Endpoint
-- **Endpoint**: `GET /api/health`
-- **Purpose**: Provides service health status including database connectivity and system metrics
-- **Response**: JSON with status, uptime, memory usage, and database health
+### 1. Health Check Endpoints
+- **Endpoints**: `GET /health` (per microservice)
+- **Purpose**: Provides individual service health status including database connectivity and system metrics
+- **Response**: JSON with status, uptime, memory usage, database health, and service dependencies
+- **Kubernetes Integration**: Used for liveness and readiness probes
 
-### 2. Metrics Endpoint
-- **Endpoint**: `GET /api/metrics`
-- **Purpose**: Exposes Prometheus-compatible metrics
+### 2. Metrics Endpoints
+- **Endpoints**: `GET /metrics` (per microservice)
+- **Purpose**: Exposes Prometheus-compatible metrics for each service
 - **Metrics Include**:
-  - HTTP request counts and durations
-  - Database query metrics
-  - AI operation metrics
-  - Memory and system metrics
-  - Error rates
+  - HTTP request counts and durations by service
+  - Database query metrics per service database
+  - AI operation metrics (processing time, success rates)
+  - Inter-service communication metrics
+  - Memory and system metrics per pod
+  - Error rates and circuit breaker status
 
 ### 3. Logging System
-- **Library**: Winston with structured logging
+- **Library**: Winston with structured logging across all services
 - **Features**:
-  - Correlation IDs for request tracing
+  - Correlation IDs for distributed request tracing
   - Multiple log levels (error, warn, info, debug)
-  - File and console outputs
-  - Structured JSON format
+  - Centralized log aggregation via Fluentd
+  - Structured JSON format with service identification
+  - Log correlation across service boundaries
 
-### 4. Monitoring Stack
-- **Prometheus**: Metrics collection and alerting
-- **Grafana**: Visualization and dashboards
-- **AlertManager**: Alert routing and notifications
+### 4. Service Mesh Monitoring (Istio)
+- **Telemetry**: Automatic metrics collection for service mesh traffic
+- **Distributed Tracing**: Jaeger integration for request tracing across services
+- **Circuit Breaker Metrics**: Real-time status of resilience patterns
+- **Load Balancing Metrics**: Traffic distribution and performance monitoring
+
+### 5. Monitoring Stack
+- **Prometheus**: Metrics collection and alerting with service discovery
+- **Grafana**: Visualization and dashboards with multi-service views
+- **AlertManager**: Alert routing and notifications with escalation
+- **Jaeger**: Distributed tracing for complex request flows
 
 ## Setup Instructions
 

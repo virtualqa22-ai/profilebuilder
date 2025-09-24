@@ -13,3 +13,83 @@ spec:
     targetPort: 3000
     protocol: TCP
   type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+ name: user-management-service
+ labels:
+   app: user-management
+spec:
+ selector:
+   app: user-management
+ ports:
+ - name: http
+   port: 80
+   targetPort: 3001
+   protocol: TCP
+ type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+ name: resume-management-service
+ labels:
+   app: resume-management
+spec:
+ selector:
+   app: resume-management
+ ports:
+ - name: http
+   port: 80
+   targetPort: 3002
+   protocol: TCP
+ type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+ name: ai-processing-service
+ labels:
+   app: ai-processing
+spec:
+ selector:
+   app: ai-processing
+ ports:
+ - name: http
+   port: 80
+   targetPort: 3003
+   protocol: TCP
+ type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+ name: document-generation-service
+ labels:
+   app: document-generation
+spec:
+ selector:
+   app: document-generation
+ ports:
+ - name: http
+   port: 80
+   targetPort: 3004
+   protocol: TCP
+ type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+ name: file-upload-service
+ labels:
+   app: file-upload
+spec:
+ selector:
+   app: file-upload
+ ports:
+ - name: http
+   port: 80
+   targetPort: 3005
+   protocol: TCP
+ type: ClusterIP

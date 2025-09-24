@@ -55,3 +55,275 @@ spec:
             port: 3000
           initialDelaySeconds: 5
           periodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: user-management-deployment
+ labels:
+   app: user-management
+spec:
+ replicas: 2
+ selector:
+   matchLabels:
+     app: user-management
+ template:
+   metadata:
+     labels:
+       app: user-management
+     annotations:
+       sidecar.istio.io/inject: "true"
+   spec:
+     containers:
+     - name: user-management
+       image: user-management:latest
+       ports:
+       - containerPort: 3001
+       env:
+       - name: NODE_ENV
+         value: "production"
+       - name: MONGO_URI
+         valueFrom:
+           secretKeyRef:
+             name: profilebuilder-secrets
+             key: mongo-uri
+       - name: PORT
+         value: "3001"
+       resources:
+         requests:
+           memory: "256Mi"
+           cpu: "200m"
+         limits:
+           memory: "512Mi"
+           cpu: "500m"
+       livenessProbe:
+         httpGet:
+           path: /health
+           port: 3001
+         initialDelaySeconds: 30
+         periodSeconds: 10
+       readinessProbe:
+         httpGet:
+           path: /health
+           port: 3001
+         initialDelaySeconds: 5
+         periodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: resume-management-deployment
+ labels:
+   app: resume-management
+spec:
+ replicas: 2
+ selector:
+   matchLabels:
+     app: resume-management
+ template:
+   metadata:
+     labels:
+       app: resume-management
+     annotations:
+       sidecar.istio.io/inject: "true"
+   spec:
+     containers:
+     - name: resume-management
+       image: resume-management:latest
+       ports:
+       - containerPort: 3002
+       env:
+       - name: NODE_ENV
+         value: "production"
+       - name: MONGO_URI
+         valueFrom:
+           secretKeyRef:
+             name: profilebuilder-secrets
+             key: mongo-uri
+       - name: PORT
+         value: "3002"
+       resources:
+         requests:
+           memory: "256Mi"
+           cpu: "200m"
+         limits:
+           memory: "512Mi"
+           cpu: "500m"
+       livenessProbe:
+         httpGet:
+           path: /health
+           port: 3002
+         initialDelaySeconds: 30
+         periodSeconds: 10
+       readinessProbe:
+         httpGet:
+           path: /health
+           port: 3002
+         initialDelaySeconds: 5
+         periodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: ai-processing-deployment
+ labels:
+   app: ai-processing
+spec:
+ replicas: 2
+ selector:
+   matchLabels:
+     app: ai-processing
+ template:
+   metadata:
+     labels:
+       app: ai-processing
+     annotations:
+       sidecar.istio.io/inject: "true"
+   spec:
+     containers:
+     - name: ai-processing
+       image: ai-processing:latest
+       ports:
+       - containerPort: 3003
+       env:
+       - name: NODE_ENV
+         value: "production"
+       - name: MONGO_URI
+         valueFrom:
+           secretKeyRef:
+             name: profilebuilder-secrets
+             key: mongo-uri
+       - name: PORT
+         value: "3003"
+       resources:
+         requests:
+           memory: "512Mi"
+           cpu: "500m"
+         limits:
+           memory: "1Gi"
+           cpu: "1000m"
+       livenessProbe:
+         httpGet:
+           path: /health
+           port: 3003
+         initialDelaySeconds: 30
+         periodSeconds: 10
+       readinessProbe:
+         httpGet:
+           path: /health
+           port: 3003
+         initialDelaySeconds: 5
+         periodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: document-generation-deployment
+ labels:
+   app: document-generation
+spec:
+ replicas: 2
+ selector:
+   matchLabels:
+     app: document-generation
+ template:
+   metadata:
+     labels:
+       app: document-generation
+     annotations:
+       sidecar.istio.io/inject: "true"
+   spec:
+     containers:
+     - name: document-generation
+       image: document-generation:latest
+       ports:
+       - containerPort: 3004
+       env:
+       - name: NODE_ENV
+         value: "production"
+       - name: MONGO_URI
+         valueFrom:
+           secretKeyRef:
+             name: profilebuilder-secrets
+             key: mongo-uri
+       - name: PORT
+         value: "3004"
+       resources:
+         requests:
+           memory: "256Mi"
+           cpu: "200m"
+         limits:
+           memory: "512Mi"
+           cpu: "500m"
+       livenessProbe:
+         httpGet:
+           path: /health
+           port: 3004
+         initialDelaySeconds: 30
+         periodSeconds: 10
+       readinessProbe:
+         httpGet:
+           path: /health
+           port: 3004
+         initialDelaySeconds: 5
+         periodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: file-upload-deployment
+ labels:
+   app: file-upload
+spec:
+ replicas: 2
+ selector:
+   matchLabels:
+     app: file-upload
+ template:
+   metadata:
+     labels:
+       app: file-upload
+     annotations:
+       sidecar.istio.io/inject: "true"
+   spec:
+     containers:
+     - name: file-upload
+       image: file-upload:latest
+       ports:
+       - containerPort: 3005
+       env:
+       - name: NODE_ENV
+         value: "production"
+       - name: MONGO_URI
+         valueFrom:
+           secretKeyRef:
+             name: profilebuilder-secrets
+             key: mongo-uri
+       - name: PORT
+         value: "3005"
+       volumeMounts:
+       - name: uploads-volume
+         mountPath: /app/uploads
+       resources:
+         requests:
+           memory: "256Mi"
+           cpu: "200m"
+         limits:
+           memory: "512Mi"
+           cpu: "500m"
+       livenessProbe:
+         httpGet:
+           path: /health
+           port: 3005
+         initialDelaySeconds: 30
+         periodSeconds: 10
+       readinessProbe:
+         httpGet:
+           path: /health
+           port: 3005
+         initialDelaySeconds: 5
+         periodSeconds: 5
+     volumes:
+     - name: uploads-volume
+       persistentVolumeClaim:
+         claimName: uploads-pvc
