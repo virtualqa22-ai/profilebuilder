@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useResumeStore } from '@/store/resumeStore';
 import { getLocaleByCode, ILocale } from '@/backend/lib/localeService';
 import { useLocale } from '@/backend/lib/locale';
@@ -9,6 +9,76 @@ import AdComponent from '@/frontend/components/AdComponent';
 
 interface ResumeBuilderProps {
   locale: string;
+interface ResumeBuilderProps {
+  locale: string;
+}
+
+interface HighlightedTextareaProps {
+  id: string;
+  name: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  issues: any[];
+  className: string;
+  rows: number;
+}
+
+const HighlightedTextarea: React.FC<HighlightedTextareaProps> = ({ id, name, placeholder, value, onChange, issues, className, rows }) => {
+  const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
+    const newValue = e.currentTarget.textContent || '';
+    onChange(newValue);
+  };
+
+  const renderHighlightedText = () => {
+    if (!issues.length) return value;
+
+    let text = value;
+    const highlights: { start: number, end: number, message: string }[] = [];
+
+    issues.forEach(issue => {
+      const lines = text.split('\n');
+      if (issue.line - 1 < lines.length) {
+        const line = lines[issue.line - 1];
+        const start = text.indexOf(line) + issue.column - 1;
+        // Assume highlight the word at that position
+        const wordMatch = line.substring(issue.column - 1).match(/\w+/);
+        if (wordMatch) {
+          const end = start + wordMatch[0].length;
+          highlights.push({ start, end, message: issue.message });
+        }
+      }
+    });
+
+    // Sort highlights by start
+    highlights.sort((a, b) => a.start - b.start);
+
+    let result = '';
+    let lastEnd = 0;
+    highlights.forEach(({ start, end, message }) => {
+      result += text.substring(lastEnd, start);
+      result += `<mark title="${message}">${text.substring(start, end)}</mark>`;
+      lastEnd = end;
+    });
+    result += text.substring(lastEnd);
+
+    return result;
+  };
+
+  return (
+    <div
+      id={id}
+      contentEditable
+      suppressContentEditableWarning
+      onInput={handleInput}
+      className={className}
+      style={{ minHeight: `${rows * 1.5}em` }}
+      dangerouslySetInnerHTML={{ __html: renderHighlightedText() || `<span style="color: gray;">${placeholder}</span>` }}
+    />
+  );
+};
+
+const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
 }
 
 const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
@@ -136,8 +206,33 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
   const [showOptionalFields, setShowOptionalFields] = useState<Record<string, boolean>>({});
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   
+  const [lintResults, setLintResults] = useState<Record<string, { issues: any[], score: number }>>({});
 
   const selectedLocaleData = getLocaleByCode(effectiveLocale);
+  const lintTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
+
+  const debouncedLint = useCallback(async (fieldId: string, content: string) => {
+    if (lintTimeouts.current[fieldId]) {
+      clearTimeout(lintTimeouts.current[fieldId]);
+    }
+    lintTimeouts.current[fieldId] = setTimeout(async () => {
+      try {
+        const response = await fetch('/api/v1/ai/lint', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ content }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          setLintResults(prev => ({ ...prev, [fieldId]: { issues: data.data.issues, score: data.data.score } }));
+        }
+      } catch (error) {
+        console.error('Lint error:', error);
+      }
+    }, 500);
+  }, []);
 
   useEffect(() => {
     updateLocale(locale);
@@ -467,7 +562,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
                 name={sectionKey}
                 placeholder={section.placeholder}
                 value={resume[sectionKey as keyof typeof resume] as string}
-                onChange={(e) => handleFieldChange(sectionKey, sectionKey, e.target.value)}
+                onChange={(e) => { handleFieldChange(sectionKey, sectionKey, e.target.value); debouncedLint(sectionKey, e.target.value); }}
                 className={`p-2 border rounded w-full text-black focus:ring-2 ${validationErrors[sectionKey] ? 'border-red-500' : 'focus:ring-blue-500'}`}
                 rows={5}
               ></textarea>
@@ -515,7 +610,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
                       name={fieldName}
                       placeholder={field.placeholder}
                       value={exp[fieldName as keyof typeof exp]}
-                      onChange={(e) => handleWorkExperienceChange(index, e)}
+                      onChange={(e) => { handleWorkExperienceChange(index, e); debouncedLint(`workExperience-description-${index}`, e.target.value); }}
                       className={`p-2 border rounded text-black w-full focus:ring-2 ${validationErrors[inputId] ? 'border-red-500' : 'focus:ring-blue-500'}`}
                     />
                     {validationErrors[inputId] && <p className="text-red-500 text-xs mt-1">{validationErrors[inputId]}</p>}
@@ -547,7 +642,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
                 name="description"
                 placeholder={selectedLocaleData.sections.workExperience.fields!.description.placeholder}
                 value={exp.description}
-                onChange={(e) => handleWorkExperienceChange(index, e)}
+                onChange={(e) => { handleWorkExperienceChange(index, e); debouncedLint(`workExperience-description-${index}`, e.target.value); }}
                 className={`p-2 border rounded w-full text-black focus:ring-2 ${validationErrors[`workExperience-description-${index}`] ? 'border-red-500' : 'focus:ring-blue-500'}`}
                 rows={4}
               ></textarea>

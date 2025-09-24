@@ -22,6 +22,7 @@ The CareerVerve API provides comprehensive endpoints for resume and cover letter
 - [Locales](#locales)
 - [Metrics](#metrics)
 - [Ads](#ads)
+- [AI](#ai)
 - [Error Codes](#error-codes)
 - [Rate Limiting](#rate-limiting)
 - [Security](#security)
@@ -756,6 +757,289 @@ curl -X GET "https://api.careerverve.com/api/ads/config"
 - **User Consent:** Ads are only served when explicitly enabled in configuration
 - **Transparency:** Clear fallback messages when adblock is detected
 - **Fairness:** No discriminatory targeting based on protected characteristics
+
+## AI
+
+The AI endpoints provide AI-powered content processing capabilities including content rewriting, grammar/style suggestions, and content linting. These endpoints implement robust security measures, rate limiting, and ethical AI usage guidelines to ensure safe and responsible AI interactions.
+
+### POST /api/v1/ai/rewrite
+
+Rewrites content using AI with optional style specification. The endpoint supports various writing styles and maintains content meaning while improving clarity and professionalism.
+
+**Content-Type:** `application/json`
+
+**Request Body:**
+```json
+{
+  "content": "string (required) - Content to rewrite (max 10,000 characters)",
+  "style": "string (optional) - Writing style (e.g., 'professional', 'casual', 'formal')",
+  "userId": "string (optional) - User identifier for rate limiting"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": "Rewritten content with improved clarity and professionalism"
+}
+```
+
+**Response (400 - Validation Error):**
+```json
+{
+  "success": false,
+  "error": "Content is required and must be a string"
+}
+```
+
+**Response (400 - Content Too Long):**
+```json
+{
+  "success": false,
+  "error": "Content exceeds maximum length of 10,000 characters"
+}
+```
+
+**Response (400 - Unsafe Content):**
+```json
+{
+  "success": false,
+  "error": "Content contains unsafe content and cannot be processed."
+}
+```
+
+**Response (429 - Rate Limited):**
+```json
+{
+  "success": false,
+  "error": "Rate limit exceeded. Please try again later."
+}
+```
+
+**Response (503 - Service Unavailable):**
+```json
+{
+  "success": false,
+  "error": "Service temporarily unavailable. Please try again later."
+}
+```
+
+**Request Example:**
+```bash
+curl -X POST "https://api.careerverve.com/api/v1/ai/rewrite" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "I have experience in software development and worked on many projects",
+    "style": "professional",
+    "userId": "user123"
+  }'
+```
+
+### POST /api/v1/ai/suggestions
+
+Provides grammar, style, and general improvement suggestions for content. Analyzes text and returns categorized suggestions to help improve writing quality.
+
+**Content-Type:** `application/json`
+
+**Request Body:**
+```json
+{
+  "content": "string (required) - Content to analyze (max 10,000 characters)",
+  "userId": "string (optional) - User identifier for rate limiting"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "grammar": [
+      "Consider using 'I have' instead of 'I got' for formal writing",
+      "Add comma after introductory phrase"
+    ],
+    "style": [
+      "Use more active voice to make writing more engaging",
+      "Vary sentence length for better readability"
+    ],
+    "suggestions": [
+      "Consider adding specific examples to support your claims",
+      "Use bullet points for better organization"
+    ]
+  }
+}
+```
+
+**Response (400 - Validation Error):**
+```json
+{
+  "success": false,
+  "error": "Content is required and must be a string"
+}
+```
+
+**Response (400 - Content Too Long):**
+```json
+{
+  "success": false,
+  "error": "Content exceeds maximum length of 10,000 characters"
+}
+```
+
+**Response (400 - Unsafe Content):**
+```json
+{
+  "success": false,
+  "error": "Content contains unsafe content and cannot be processed."
+}
+```
+
+**Response (429 - Rate Limited):**
+```json
+{
+  "success": false,
+  "error": "Rate limit exceeded. Please try again later."
+}
+```
+
+**Response (503 - Service Unavailable):**
+```json
+{
+  "success": false,
+  "error": "Service temporarily unavailable. Please try again later."
+}
+```
+
+**Request Example:**
+```bash
+curl -X POST "https://api.careerverve.com/api/v1/ai/suggestions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "I got experience in software development. I worked on many projects and learned alot.",
+    "userId": "user123"
+  }'
+```
+
+### POST /api/v1/ai/lint
+
+Detects linting issues, errors, and provides improvement suggestions for content. Performs comprehensive analysis including grammar, style, and structural issues with severity scoring.
+
+**Content-Type:** `application/json`
+
+**Request Body:**
+```json
+{
+  "content": "string (required) - Content to analyze (max 10,000 characters)",
+  "language": "string (optional) - Language/type of content (default: 'text')",
+  "userId": "string (optional) - User identifier for rate limiting"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "issues": [
+      {
+        "type": "grammar",
+        "message": "Missing comma after introductory phrase",
+        "line": 1,
+        "column": 15,
+        "severity": "warning"
+      },
+      {
+        "type": "style",
+        "message": "Use active voice instead of passive",
+        "line": 2,
+        "column": 5,
+        "severity": "info"
+      }
+    ],
+    "score": 85
+  }
+}
+```
+
+**Response (400 - Validation Error):**
+```json
+{
+  "success": false,
+  "error": "Content is required and must be a string"
+}
+```
+
+**Response (400 - Content Too Long):**
+```json
+{
+  "success": false,
+  "error": "Content exceeds maximum length of 10,000 characters"
+}
+```
+
+**Response (400 - Unsafe Content):**
+```json
+{
+  "success": false,
+  "error": "Content contains unsafe content and cannot be processed."
+}
+```
+
+**Response (429 - Rate Limited):**
+```json
+{
+  "success": false,
+  "error": "Rate limit exceeded. Please try again later."
+}
+```
+
+**Response (503 - Service Unavailable):**
+```json
+{
+  "success": false,
+  "error": "Service temporarily unavailable. Please try again later."
+}
+```
+
+**Request Example:**
+```bash
+curl -X POST "https://api.careerverve.com/api/v1/ai/lint" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "I got experience in software development. Projects were worked on by me.",
+    "language": "text",
+    "userId": "user123"
+  }'
+```
+
+### Security Notes
+
+- **Input Validation:** All content is validated for length, type, and safety before processing
+- **Rate Limiting:** 10 requests per minute per user across all AI endpoints
+- **Content Sanitization:** Input prompts are sanitized to prevent injection attacks
+- **Output Validation:** AI-generated content is validated for safety and appropriateness
+- **Caching:** Results are cached to improve performance and reduce API costs
+- **Circuit Breaker:** Automatic failure isolation prevents cascade failures
+- **Logging:** All AI interactions are logged for security monitoring
+
+### Rate Limiting
+
+| Endpoint | Limit | Window |
+|----------|-------|--------|
+| `/api/v1/ai/rewrite` | 10 req/min | 1 minute per user |
+| `/api/v1/ai/suggestions` | 10 req/min | 1 minute per user |
+| `/api/v1/ai/lint` | 10 req/min | 1 minute per user |
+
+### Ethical Considerations
+
+- **Privacy Protection:** User content is processed temporarily and not stored without consent
+- **Fairness:** AI processing does not discriminate based on protected characteristics
+- **Transparency:** Users are informed about AI processing and can opt out
+- **Data Minimization:** Only necessary data is processed for the requested operation
+- **User Consent:** AI features require explicit user consent and understanding
+- **Bias Mitigation:** Regular audits ensure AI responses are fair and unbiased
+- **Human Oversight:** Critical decisions involving sensitive data include human review
 
 ## Error Codes
 
