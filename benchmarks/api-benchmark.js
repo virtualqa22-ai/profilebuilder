@@ -16,6 +16,31 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 const CONCURRENT_REQUESTS = [1, 10, 50, 100];
 const TEST_DURATION = 30000; // 30 seconds per test
 const WARMUP_REQUESTS = 10;
+// SLA thresholds from performance-slas.md
+const SLA_THRESHOLDS = {
+  '/api/health': { p95: 500, p99: 1000, availability: 99.9 },
+  '/api/resumes': { p95: 1000, p99: 2000, availability: 99.5 },
+  '/api/resumes/[id]': { p95: 500, p99: 1000, availability: 99.5 },
+  '/api/locales': { p95: 200, p99: 500, availability: 99.9 },
+  '/api/metrics': { p95: 100, p99: 200, availability: 99.9 },
+  '/api/ads/config': { p95: 300, p99: 600, availability: 99.5 },
+  '/api/ads/metrics': { p95: 200, p99: 400, availability: 99.5 },
+  '/api/v1/ai/suggestions': { p95: 3000, p99: 5000, availability: 99.0 },
+  '/api/v1/ai/rewrite': { p95: 5000, p99: 8000, availability: 99.0 },
+  '/api/v1/ai/lint': { p95: 2000, p99: 4000, availability: 99.0 }
+};
+// API endpoints to benchmark with comprehensive coverage
+const ENDPOINTS = [
+  { path: '/api/health', method: 'GET', name: 'Health Check', sla: SLA_THRESHOLDS['/api/health'] },
+  { path: '/api/resumes', method: 'GET', name: 'Get Resumes', sla: SLA_THRESHOLDS['/api/resumes'] },
+  { path: '/api/locales', method: 'GET', name: 'Get Locales', sla: SLA_THRESHOLDS['/api/locales'] },
+  { path: '/api/metrics', method: 'GET', name: 'Get Metrics', sla: SLA_THRESHOLDS['/api/metrics'] },
+  { path: '/api/ads/config', method: 'GET', name: 'Ads Config', sla: SLA_THRESHOLDS['/api/ads/config'] },
+  { path: '/api/ads/metrics', method: 'GET', name: 'Ads Metrics', sla: SLA_THRESHOLDS['/api/ads/metrics'] },
+  { path: '/api/v1/ai/suggestions', method: 'POST', name: 'AI Suggestions', sla: SLA_THRESHOLDS['/api/v1/ai/suggestions'] },
+  { path: '/api/v1/ai/rewrite', method: 'POST', name: 'AI Rewrite', sla: SLA_THRESHOLDS['/api/v1/ai/rewrite'] },
+  { path: '/api/v1/ai/lint', method: 'POST', name: 'AI Lint', sla: SLA_THRESHOLDS['/api/v1/ai/lint'] }
+];
 
 // API endpoints to benchmark
 const ENDPOINTS = [

@@ -1,5 +1,5 @@
-
 import { NextResponse } from 'next/server';
+import { getCacheManager, CacheKeys } from '@/backend/lib/cacheManager';
 
 function setSecurityHeaders(res: NextResponse) {
   res.headers.set('X-Content-Type-Options', 'nosniff');
@@ -19,16 +19,28 @@ export async function POST(req: Request) {
       return res;
     }
 
-    // Basic keyword extraction (for now, just split by space and remove common words)
-    const commonWords = new Set(['a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of']);
-    const keywords = text
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((word: string) => word.length > 2 && !commonWords.has(word));
+    const cacheManager = getCacheManager();
+    const cacheKey = CacheKeys.jdKeywords(text);
 
-    const uniqueKeywords = [...new Set(keywords)];
+    // Try to get cached keywords first
+    let keywords = await cacheManager.get<string[]>(cacheKey);
 
-    const res = NextResponse.json({ keywords: uniqueKeywords });
+    if (!keywords) {
+      // Cache miss - perform keyword extraction
+      const commonWords = new Set(['a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of']);
+      const extractedKeywords = text
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((word: string) => word.length > 2 && !commonWords.has(word));
+
+      keywords = [...new Set(extractedKeywords)];
+
+      // Cache the result with configured TTL
+      const CACHE_CONFIG = (cacheManager as any).CACHE_CONFIG || { JD_PARSER_TTL: 3600 };
+      await cacheManager.set(cacheKey, keywords, CACHE_CONFIG.JD_PARSER_TTL);
+    }
+
+    const res = NextResponse.json({ keywords });
     setSecurityHeaders(res);
     return res;
   } catch (error: any) {

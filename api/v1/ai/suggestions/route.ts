@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getAIService } from '../../../../backend/lib/aiService';
-import { applySecurityHeaders } from '../../../../backend/lib/errorHandler';
-import { globalLogger } from '../../../../backend/lib/logger';
+import { validateAIRequest, createAIValidationErrorResponse } from '../../../../backend/lib/aiValidation';
+import { handleAIError, createAISuccessResponse } from '../../../../backend/lib/aiErrorHandler';
 
 /**
  * POST /api/v1/ai/suggestions
@@ -28,35 +28,23 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    // Parse request body
+    // Parse and validate request body
     const body = await request.json();
-    const { content, userId } = body;
+    const validation = validateAIRequest(body);
 
-    // Validate required fields
-    if (!content || typeof content !== 'string') {
-      return NextResponse.json(
-        { success: false, error: 'Content is required and must be a string' },
-        { status: 400 }
-      );
+    if (!validation.isValid) {
+      return createAIValidationErrorResponse(validation.error!);
     }
 
-    // Validate content length
-    if (content.length > 10000) {
-      return NextResponse.json(
-        { success: false, error: 'Content exceeds maximum length of 10,000 characters' },
-        { status: 400 }
-      );
-    }
+    const { content, userId } = validation;
 
-    // Get AI service instance
+    // Get AI service instance and process request
     const aiService = getAIService();
+    const suggestions = await aiService.getSuggestions(content!, userId);
 
-    // Process the suggestions request
-    const suggestions = await aiService.getSuggestions(content, userId);
-
-    // Log successful request
-    globalLogger.info('AI suggestions completed', {
-      contentLength: content.length,
+    // Return success response with logging
+    return createAISuccessResponse(suggestions, {
+      contentLength: content!.length,
       userId: userId || 'anonymous',
       processingTime: Date.now() - startTime,
       grammarCount: suggestions.grammar.length,
@@ -64,49 +52,7 @@ export async function POST(request: NextRequest) {
       generalCount: suggestions.suggestions.length,
     });
 
-    const response = NextResponse.json({
-      success: true,
-      data: suggestions,
-    });
-
-    applySecurityHeaders(response);
-    return response;
-
   } catch (error: any) {
-    // Log error
-    globalLogger.error('AI suggestions failed', error, {
-      processingTime: Date.now() - startTime,
-    });
-
-    // Handle specific error types
-    if (error.message?.includes('Rate limit exceeded')) {
-      return NextResponse.json(
-        { success: false, error: 'Rate limit exceeded. Please try again later.' },
-        { status: 429 }
-      );
-    }
-
-    if (error.message?.includes('Circuit breaker is open')) {
-      return NextResponse.json(
-        { success: false, error: 'Service temporarily unavailable. Please try again later.' },
-        { status: 503 }
-      );
-    }
-
-    if (error.message?.includes('unsafe content')) {
-      return NextResponse.json(
-        { success: false, error: 'Content contains unsafe content and cannot be processed.' },
-        { status: 400 }
-      );
-    }
-
-    // Generic error response
-    const response = NextResponse.json(
-      { success: false, error: 'An error occurred while processing your request.' },
-      { status: 500 }
-    );
-
-    applySecurityHeaders(response);
-    return response;
+    return handleAIError(error, 'AI suggestions', startTime).response;
   }
 }

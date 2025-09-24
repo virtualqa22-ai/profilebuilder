@@ -9,8 +9,6 @@ import AdComponent from '@/frontend/components/AdComponent';
 
 interface ResumeBuilderProps {
   locale: string;
-interface ResumeBuilderProps {
-  locale: string;
 }
 
 interface HighlightedTextareaProps {
@@ -77,9 +75,6 @@ const HighlightedTextarea: React.FC<HighlightedTextareaProps> = ({ id, name, pla
     />
   );
 };
-
-const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
-}
 
 const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
   // prefer context locale when present

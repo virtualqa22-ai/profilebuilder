@@ -1,0 +1,120 @@
+# ProfileBuilder Deployment Reliability Testing Configuration
+# Tests deployment reliability, rollback capabilities, and zero-downtime deployments
+# Run with: artillery run benchmarks/deployment-reliability-test.yml
+
+config:
+  target: 'http://localhost:3000'
+  phases:
+    # Pre-deployment baseline
+    - duration: 60
+      arrivalRate: 2
+      name: "Pre-deployment Baseline"
+    # Deployment simulation (traffic during deployment)
+    - duration: 120
+      arrivalRate: 5
+      name: "Deployment Traffic"
+    # Post-deployment validation
+    - duration: 180
+      arrivalRate: 3
+      name: "Post-deployment Validation"
+    # Rollback simulation
+    - duration: 60
+      arrivalRate: 1
+      name: "Rollback Validation"
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+      User-Agent: 'Artillery-Deployment-Test/1.0'
+    timeout: 15000  # 15 second timeout for deployment tests
+
+scenarios:
+  # Continuous health monitoring during deployment
+  - name: "Deployment Health Monitor"
+    weight: 40
+    flow:
+      - get:
+          url: "/api/health"
+          expect:
+            - statusCode: 200
+          capture:
+            json: "$.uptime"
+            as: "systemUptime"
+          afterResponse:
+            - log: "Health check passed - uptime: {{ systemUptime }}"
+
+  # Resume operations during deployment
+  - name: "Deployment Resume Operations"
+    weight: 30
+    flow:
+      # Create resume during deployment
+      - post:
+          url: "/api/resumes"
+          json:
+            title: "Deployment Test Resume {{ $randomString() }}"
+            content: |
+              {
+                "personalInfo": {
+                  "firstName": "Deployment",
+                  "lastName": "Test{{ $randomInt(1, 10000) }}",
+                  "email": "deployment{{ $randomInt(1, 10000) }}@example.com"
+                },
+                "summary": "Testing deployment reliability",
+                "workExperience": [{
+                  "company": "DeploymentTest Inc",
+                  "position": "Reliability Tester",
+                  "startDate": "2023-01-01",
+                  "description": "Testing system during deployment"
+                }],
+                "education": [{
+                  "institution": "Deployment University",
+                  "degree": "BS Deployment Testing",
+                  "graduationYear": 2022
+                }],
+                "skills": ["Deployment Testing", "Reliability Testing"],
+                "locale": "en-US"
+              }
+          expect:
+            - statusCode: 201
+          capture:
+            json: "$.data._id"
+            as: "deploymentResumeId"
+
+      # Read it back to verify
+      - get:
+          url: "/api/resumes"
+          expect:
+            - statusCode: 200
+
+  # Metrics monitoring during deployment
+  - name: "Deployment Metrics Check"
+    weight: 15
+    flow:
+      - get:
+          url: "/api/metrics"
+          expect:
+            - statusCode: 200
+          afterResponse:
+            - log: "Metrics check passed during deployment"
+
+  # Locale access during deployment
+  - name: "Deployment Locale Access"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/locales"
+          expect:
+            - statusCode: 200
+
+  # AI services during deployment (if available)
+  - name: "Deployment AI Services"
+    weight: 5
+    flow:
+      - post:
+          url: "/api/v1/ai/suggestions"
+          json:
+            content: "Test content for deployment"
+            context: "deployment testing"
+          expect:
+            - statusCode: 200
+          afterResponse:
+            - log: "AI suggestions working during deployment"

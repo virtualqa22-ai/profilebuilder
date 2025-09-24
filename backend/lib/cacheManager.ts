@@ -4,6 +4,15 @@
  */
 
 import { createClient, RedisClientType } from 'redis';
+import { createHash } from 'crypto';
+
+// Cache configuration from environment variables
+const CACHE_CONFIG = {
+  JD_PARSER_TTL: parseInt(process.env.CACHE_JD_PARSER_TTL || '3600'), // 1 hour default
+  ATS_SCORING_TTL: parseInt(process.env.CACHE_ATS_SCORING_TTL || '1800'), // 30 minutes default
+  ENABLE_JD_PARSER_CACHE: process.env.CACHE_JD_PARSER_ENABLED !== 'false',
+  ENABLE_ATS_SCORING_CACHE: process.env.CACHE_ATS_SCORING_ENABLED !== 'false',
+};
 
 // Cache entry interface
 interface CacheEntry<T> {
@@ -469,6 +478,23 @@ export const CacheKeys = {
   resume: (id: string) => `resume:${id}`,
   resumeTemplate: (templateId: string) => `resume:template:${templateId}`,
   userData: (userId: string) => `user:data:${userId}`,
+  /**
+   * Generate hash-based cache key for JD parsing
+   * Uses SHA-256 hash of the job description text for consistent caching
+   */
+  jdKeywords: (jdText: string) => {
+    const hash = createHash('sha256').update(jdText.trim().toLowerCase()).digest('hex');
+    return `jd:keywords:${hash}`;
+  },
+  /**
+   * Generate hash-based cache key for ATS scoring
+   * Combines hashes of resume and JD for unique scoring cache
+   */
+  atsScore: (resumeId: string, jdText: string) => {
+    const resumeHash = createHash('sha256').update(resumeId).digest('hex').substring(0, 16);
+    const jdHash = createHash('sha256').update(jdText.trim().toLowerCase()).digest('hex').substring(0, 16);
+    return `ats:score:${resumeHash}:${jdHash}`;
+  },
 };
 
 // Graceful shutdown handler

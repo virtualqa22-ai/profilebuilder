@@ -20,6 +20,7 @@
  */
 import mongoose from 'mongoose';
 import { encrypt, decrypt } from '../lib/encryption';
+import { createStandardImmutableHooks } from '../lib/modelUtils';
 
 /**
  * AuditLog schema definition

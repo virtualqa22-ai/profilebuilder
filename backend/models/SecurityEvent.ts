@@ -9,6 +9,7 @@
 import mongoose from 'mongoose';
 import { encrypt, decrypt } from '../lib/encryption';
 import { SECURITY_EVENT_TYPES, SECURITY_SEVERITY_LEVELS } from '../lib/constants';
+import { createStandardImmutableHooks } from '../lib/modelUtils';
 
 /**
  * SecurityEvent schema definition
@@ -134,29 +135,10 @@ SecurityEventSchema.index({ alertTriggered: 1, timestamp: -1 });
 SecurityEventSchema.index({ eventType: 1, severity: 1, timestamp: -1 });
 SecurityEventSchema.index({ userId: 1, eventType: 1, timestamp: -1 });
 
-// Prevent updates and deletes for immutability
-SecurityEventSchema.pre('findOneAndUpdate', function(next) {
-  throw new Error('Security events are immutable and cannot be updated');
-});
-
-SecurityEventSchema.pre('updateOne', function(next) {
-  throw new Error('Security events are immutable and cannot be updated');
-});
-
-SecurityEventSchema.pre('updateMany', function(next) {
-  throw new Error('Security events are immutable and cannot be updated');
-});
-
-SecurityEventSchema.pre('findOneAndDelete', function(next) {
-  throw new Error('Security events are immutable and cannot be deleted');
-});
-
-SecurityEventSchema.pre('deleteOne', function(next) {
-  throw new Error('Security events are immutable and cannot be deleted');
-});
-
-SecurityEventSchema.pre('deleteMany', function(next) {
-  throw new Error('Security events are immutable and cannot be deleted');
+// Apply immutable hooks to prevent updates and deletes
+const immutableHooks = createStandardImmutableHooks('Security events');
+Object.entries(immutableHooks).forEach(([hook, handler]) => {
+  SecurityEventSchema.pre(hook as any, handler);
 });
 
 /**
