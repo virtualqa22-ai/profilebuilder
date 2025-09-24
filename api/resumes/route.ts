@@ -7,10 +7,15 @@ import { validateResumeData } from '../../../backend/lib/validations';
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../../../backend/lib/messages';
 import { SECURITY_HEADERS, DEFAULT_LOCALE, MAX_TITLE_LENGTH } from '../../../backend/lib/constants';
 import { applySecurityHeaders, createErrorResponse, handleDatabaseError, handleValidationError, ERROR_CODES } from '../../../backend/lib/errorHandler';
-import { getCacheManager } from '../../../backend/lib/cacheManager';
+import { getCacheManager, CacheKeys } from '../../../backend/lib/cacheManager';
+import { requireAuth } from '../../../backend/lib/auth';
 
 
 export async function GET(request: Request) {
+  // Check authentication
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   try {
     // Parse query parameters for pagination and filtering
     const url = new URL(request.url);
@@ -18,7 +23,8 @@ export async function GET(request: Request) {
     const limit = parseInt(url.searchParams.get('limit') || '10');
     const locale = url.searchParams.get('locale');
     const sortBy = url.searchParams.get('sortBy') || 'createdAt';
-    const sortOrder = url.searchParams.get('sortOrder') === 'asc' ? 1 : -1;
+    const sortOrderStr = url.searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
+    const sortOrder = sortOrderStr === 'asc' ? 1 : -1;
     const includeContent = url.searchParams.get('includeContent') === 'true';
 
     // Validate pagination parameters
@@ -27,7 +33,7 @@ export async function GET(request: Request) {
 
     // Implement caching strategy with pagination support
     const cacheManager = getCacheManager();
-    const cacheKey = `resumes:list:${validPage}:${validLimit}:${locale || 'all'}:${sortBy}:${sortOrder}:${includeContent}`;
+    const cacheKey = CacheKeys.resumesList(validPage, validLimit, locale, sortBy, sortOrderStr, includeContent);
 
     // Try to get from cache first
     let cachedResult = await cacheManager.get(cacheKey);
@@ -90,6 +96,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(req: Request) {
+  // Check authentication
+  const authResult = await requireAuth(req);
+  if (authResult) return authResult;
+
   await dbConnect();
   const Resume = mongoose.model('Resume');
     // Extract locale from request body, defaulting to en-US for backward compatibility
@@ -116,10 +126,7 @@ export async function POST(req: Request) {
     // Invalidate all related cache keys when new resume is created
     // This ensures data consistency across all cached paginated results
     const cacheManager = getCacheManager();
-    // Delete the old cache key for backward compatibility
-    await cacheManager.delete('resumes:all');
-    // Also invalidate user data cache if it exists
-    await cacheManager.delete(`user:data:${body.email || 'unknown'}`);
+    await cacheManager.invalidatePattern('resumes:list:*');
 
     const res = NextResponse.json({ success: true, data: resume }, { status: 201 });
     applySecurityHeaders(res);

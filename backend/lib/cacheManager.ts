@@ -478,6 +478,8 @@ export const CacheKeys = {
   resume: (id: string) => `resume:${id}`,
   resumeTemplate: (templateId: string) => `resume:template:${templateId}`,
   userData: (userId: string) => `user:data:${userId}`,
+  resumesList: (page: number, limit: number, locale?: string, sortBy?: string, sortOrder?: string, includeContent?: boolean) =>
+    `resumes:list:${page}:${limit}:${locale || 'all'}:${sortBy || 'createdAt'}:${sortOrder || 'desc'}:${includeContent || false}`,
   /**
    * Generate hash-based cache key for JD parsing
    * Uses SHA-256 hash of the job description text for consistent caching

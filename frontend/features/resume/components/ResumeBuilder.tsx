@@ -1,80 +1,24 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSession } from 'next-auth/react';
 import { useResumeStore } from '@/store/resumeStore';
 import { getLocaleByCode, ILocale } from '@/backend/lib/localeService';
 import { useLocale } from '@/backend/lib/locale';
+import { validateResumeData } from '@/shared/validations';
 import Comment from './Comment';
 import LocaleSelector from '@/frontend/components/ui/LocaleSelector';
 import ErrorBoundary from '@/frontend/components/ui/ErrorBoundary';
 import AdComponent from '@/frontend/components/AdComponent';
+import PersonalInfoForm from './forms/PersonalInfoForm';
+import WorkExperienceSection from './sections/WorkExperienceSection';
+import EducationSection from './sections/EducationSection';
+import OptionalFieldsManager from './managers/OptionalFieldsManager';
+import CommentSystem from './comments/CommentSystem';
+import ExportControls from './controls/ExportControls';
 
 interface ResumeBuilderProps {
   locale: string;
 }
 
-interface HighlightedTextareaProps {
-  id: string;
-  name: string;
-  placeholder: string;
-  value: string;
-  onChange: (value: string) => void;
-  issues: any[];
-  className: string;
-  rows: number;
-}
-
-const HighlightedTextarea: React.FC<HighlightedTextareaProps> = ({ id, name, placeholder, value, onChange, issues, className, rows }) => {
-  const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
-    const newValue = e.currentTarget.textContent || '';
-    onChange(newValue);
-  };
-
-  const renderHighlightedText = () => {
-    if (!issues.length) return value;
-
-    let text = value;
-    const highlights: { start: number, end: number, message: string }[] = [];
-
-    issues.forEach(issue => {
-      const lines = text.split('\n');
-      if (issue.line - 1 < lines.length) {
-        const line = lines[issue.line - 1];
-        const start = text.indexOf(line) + issue.column - 1;
-        // Assume highlight the word at that position
-        const wordMatch = line.substring(issue.column - 1).match(/\w+/);
-        if (wordMatch) {
-          const end = start + wordMatch[0].length;
-          highlights.push({ start, end, message: issue.message });
-        }
-      }
-    });
-
-    // Sort highlights by start
-    highlights.sort((a, b) => a.start - b.start);
-
-    let result = '';
-    let lastEnd = 0;
-    highlights.forEach(({ start, end, message }) => {
-      result += text.substring(lastEnd, start);
-      result += `<mark title="${message}">${text.substring(start, end)}</mark>`;
-      lastEnd = end;
-    });
-    result += text.substring(lastEnd);
-
-    return result;
-  };
-
-  return (
-    <div
-      id={id}
-      contentEditable
-      suppressContentEditableWarning
-      onInput={handleInput}
-      className={className}
-      style={{ minHeight: `${rows * 1.5}em` }}
-      dangerouslySetInnerHTML={{ __html: renderHighlightedText() || `<span style="color: gray;">${placeholder}</span>` }}
-    />
-  );
-};
 
 const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
   // prefer context locale when present
@@ -204,7 +148,9 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
   const [lintResults, setLintResults] = useState<Record<string, { issues: any[], score: number }>>({});
 
   const selectedLocaleData = getLocaleByCode(effectiveLocale);
+  const { data: session } = useSession();
   const lintTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
+  const saveTimeoutRef = useRef<NodeJS.Timeout>();
 
   const debouncedLint = useCallback(async (fieldId: string, content: string) => {
     if (lintTimeouts.current[fieldId]) {
@@ -227,6 +173,32 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
         console.error('Lint error:', error);
       }
     }, 500);
+  const debouncedSave = useCallback((resumeId: string, data: any) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(async () => {
+      setSaveStatus('saving');
+      try {
+        const response = await fetch(`/api/resumes/${resumeId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        });
+        const result = await response.json();
+        if (result.success) {
+          setSaveStatus('saved');
+        } else {
+          throw new Error(result.error || 'Save failed');
+        }
+      } catch (error) {
+        console.error('Failed to autosave:', error);
+        setSaveStatus('error');
+      }
+    }, 2500);
+  }, []);
   }, []);
 
   useEffect(() => {
@@ -250,6 +222,15 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
       clearTimeout(handler);
     };
   }, [resume]);
+  // Memoize validation errors to only recalculate when resume or locale data changes
+  useEffect(() => {
+    if (!selectedLocaleData) {
+      setValidationErrors({});
+      return;
+    }
+    const errors = validateResumeData(resume, selectedLocaleData);
+    setValidationErrors(errors);
+  }, [resume, selectedLocaleData]);
 
   const handleFieldChange = (sectionKey: string, fieldName: string, value: string) => {
     const field = selectedLocaleData?.sections[sectionKey]?.fields?.[fieldName];
@@ -328,53 +309,9 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
     removeEducation(index);
   };
 
-  const validateResume = () => {
-    const errors: Record<string, string> = {};
-    if (!selectedLocaleData) return errors;
-
-    Object.entries(selectedLocaleData.sections).forEach(([sectionKey, section]) => {
-      if (section.fields && section.order) {
-        section.order.forEach((fieldName: string) => {
-          const field = section.fields![fieldName];
-          const inputId = `${sectionKey}-${fieldName}`;
-          if (!field.optional && !(resume[sectionKey as keyof typeof resume] as any)?.[fieldName]) {
-            errors[inputId] = `${field.label} is required.`;
-          }
-        });
-      } else if (section.placeholder && !section.fields) {
-        // For sections like summary, skills, projects, awardsCertifications
-        const isSectionOptional = (selectedLocaleData.sections as any)[sectionKey]?.optional;
-        if (!isSectionOptional && !(resume[sectionKey as keyof typeof resume] as string)) {
-          errors[sectionKey] = `${section.label} is required.`;
-        }
-      }
-    });
-
-    // Validate work experience
-    resume.workExperience.forEach((exp, index) => {
-      selectedLocaleData.sections.workExperience.order.forEach((fieldName: string) => {
-        const field = selectedLocaleData.sections.workExperience.fields![fieldName];
-        const inputId = `workExperience-${index}-${fieldName}`;
-        if (!field.optional && !exp[fieldName as keyof typeof exp]) {
-          errors[inputId] = `${field.label} in Work Experience #${index + 1} is required.`;
-        }
-      });
-    });
-
-    // Validate education
-    resume.education.forEach((edu, index) => {
-      selectedLocaleData.sections.education.order.forEach((fieldName: string) => {
-        const field = selectedLocaleData.sections.education.fields![fieldName];
-        const inputId = `education-${index}-${fieldName}`;
-        if (!field.optional && !edu[fieldName as keyof typeof edu]) {
-          errors[inputId] = `${field.label} in Education #${index + 1} is required.`;
-        }
-      });
-    });
-
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
+  const validateResume = useCallback(() => {
+    return Object.keys(validationErrors).length === 0;
+  }, [validationErrors]);
 
   const handleExportPdf = async () => {
     if (!validateResume()) {
@@ -458,12 +395,13 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
 
   const handleAddComment = async (field: string, text: string) => {
     try {
+      const author = session?.user?.name || session?.user?.email || 'Anonymous';
       const response = await fetch(`/api/resumes/${resume._id}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ field, text, author: 'User' }), // Replace 'User' with actual user
+        body: JSON.stringify({ field, text, author }),
       });
       const data = await response.json();
       if (data.success) {
@@ -494,270 +432,170 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
         {saveStatus === 'error' && <span className="text-red-600">Error saving!</span>}
       </div>
 
-      {Object.entries(selectedLocaleData.sections).map(([sectionKey, section]) => (
-        <section key={sectionKey} className="mb-6">
-          <h3 className="text-xl font-semibold mb-3">{section.label}</h3>
-          {section.fields && section.order && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {section.order.map((fieldName: string) => {
-                const field = section.fields![fieldName];
-                const inputId = `${sectionKey}-${fieldName}`;
-                return (
-                  <div key={fieldName} className="relative">
-                    <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1">
-                      {field.label}
-                      {field.optional && (
+      {Object.entries(selectedLocaleData.sections).map(([sectionKey, section]) => {
+        if (sectionKey === 'personalInfo') {
+          return (
+            <PersonalInfoForm
+              key={sectionKey}
+              selectedLocaleData={selectedLocaleData}
+              resume={resume}
+              handleFieldChange={handleFieldChange}
+              showOptionalFields={showOptionalFields}
+              setShowOptionalFields={setShowOptionalFields}
+              validationErrors={validationErrors}
+              toggleComments={toggleComments}
+              showComments={showComments}
+              comments={comments}
+              commentText={commentText}
+              setCommentText={setCommentText}
+              handleAddComment={handleAddComment}
+              CommentComponent={Comment}
+            />
+          );
+        }
+        if (sectionKey === 'workExperience') {
+          return (
+            <WorkExperienceSection
+              key={sectionKey}
+              selectedLocaleData={selectedLocaleData}
+              resume={resume}
+              handleWorkExperienceChange={handleWorkExperienceChange}
+              debouncedLint={debouncedLint}
+              addWorkExperienceEntry={addWorkExperienceEntry}
+              removeWorkExperienceEntry={removeWorkExperienceEntry}
+              validationErrors={validationErrors}
+              toggleComments={toggleComments}
+              showComments={showComments}
+              comments={comments}
+              commentText={commentText}
+              setCommentText={setCommentText}
+              handleAddComment={handleAddComment}
+              CommentComponent={Comment}
+            />
+          );
+        }
+        if (sectionKey === 'education') {
+          return (
+            <EducationSection
+              key={sectionKey}
+              selectedLocaleData={selectedLocaleData}
+              resume={resume}
+              handleEducationChange={handleEducationChange}
+              addEducationEntry={addEducationEntry}
+              removeEducationEntry={removeEducationEntry}
+              validationErrors={validationErrors}
+              toggleComments={toggleComments}
+              showComments={showComments}
+              comments={comments}
+              commentText={commentText}
+              setCommentText={setCommentText}
+              handleAddComment={handleAddComment}
+              CommentComponent={Comment}
+            />
+          );
+        }
+        return (
+          <section key={sectionKey} className="mb-6">
+            <h3 className="text-xl font-semibold mb-3">{section.label}</h3>
+            {section.fields && section.order && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {section.order.map((fieldName: string) => {
+                  const field = section.fields![fieldName];
+                  const inputId = `${sectionKey}-${fieldName}`;
+                  return (
+                    <div key={fieldName} className="relative">
+                      <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1">
+                        {field.label}
+                        {field.optional && (
+                          <input
+                            type="checkbox"
+                            className="ml-2"
+                            checked={showOptionalFields[fieldName] || false}
+                            onChange={() => setShowOptionalFields(prev => ({ ...prev, [fieldName]: !prev[fieldName] }))}
+                          />
+                        )}
+                      </label>
+                      {(field.optional === undefined || !field.optional || showOptionalFields[fieldName]) && (
                         <input
-                          type="checkbox"
-                          className="ml-2"
-                          checked={showOptionalFields[fieldName] || false}
-                          onChange={() => setShowOptionalFields(prev => ({ ...prev, [fieldName]: !prev[fieldName] }))}
+                          id={inputId}
+                          type="text"
+                          name={fieldName}
+                          placeholder={field.placeholder}
+                          value={(resume[sectionKey as keyof typeof resume] as any)?.[fieldName] || ''}
+                          onChange={(e) => handleFieldChange(sectionKey, fieldName, e.target.value)}
+                          className={`p-2 border rounded text-black w-full focus:ring-2 ${validationErrors[inputId] ? 'border-red-500' : 'focus:ring-blue-500'}`}
                         />
                       )}
-                    </label>
-                    {(field.optional === undefined || !field.optional || showOptionalFields[fieldName]) && (
-                      <input
-                        id={inputId}
-                        type="text"
-                        name={fieldName}
-                        placeholder={field.placeholder}
-                        value={(resume[sectionKey as keyof typeof resume] as any)?.[fieldName] || ''}
-                        onChange={(e) => handleFieldChange(sectionKey, fieldName, e.target.value)}
-                        className={`p-2 border rounded text-black w-full focus:ring-2 ${validationErrors[inputId] ? 'border-red-500' : 'focus:ring-blue-500'}`}
+                      {validationErrors[inputId] && <p className="text-red-500 text-xs mt-1">{validationErrors[inputId]}</p>}
+                      <button onClick={() => toggleComments(inputId)} className="absolute top-0 right-0 p-1 text-gray-500 hover:text-black" aria-label={`Comment on ${field.label}`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 11a1 1 0 112 0v1a1 1 0 11-2 0v-1zm0-4a1 1 0 112 0v1a1 1 0 11-2 0V7z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                      <CommentSystem
+                        fieldId={inputId}
+                        showComments={showComments[inputId]}
+                        comments={comments}
+                        commentText={commentText}
+                        setCommentText={setCommentText}
+                        handleAddComment={handleAddComment}
+                        CommentComponent={Comment}
                       />
-                    )}
-                    {validationErrors[inputId] && <p className="text-red-500 text-xs mt-1">{validationErrors[inputId]}</p>}
-                    <button onClick={() => toggleComments(inputId)} className="absolute top-0 right-0 p-1 text-gray-500 hover:text-black" aria-label={`Comment on ${field.label}`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 11a1 1 0 112 0v1a1 1 0 11-2 0v-1zm0-4a1 1 0 112 0v1a1 1 0 11-2 0V7z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                    {showComments[inputId] && (
-                      <div className="absolute top-full right-0 w-64 bg-white border rounded-lg shadow-lg z-10" data-testid={`comment-thread-${inputId}`}>
-                        <div className="p-2">
-                          <h4 className="font-semibold">Comments</h4>
-                          {comments.filter(c => c.field === inputId).map((comment, index) => (
-                            <Comment key={index} comment={comment} />
-                          ))}
-                          <textarea className="w-full p-1 border rounded mt-2" placeholder="Add a comment..." value={commentText} onChange={(e) => setCommentText(e.target.value)}></textarea>
-                          <button onClick={() => handleAddComment(inputId, commentText)} className="mt-1 p-1 bg-blue-500 text-white rounded">Add</button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {section.placeholder && !section.fields && (
-            <div className="relative">
-              <label htmlFor={sectionKey} className="block text-sm font-medium text-gray-700 mb-1">{section.label}</label>
-              <textarea
-                id={sectionKey}
-                name={sectionKey}
-                placeholder={section.placeholder}
-                value={resume[sectionKey as keyof typeof resume] as string}
-                onChange={(e) => { handleFieldChange(sectionKey, sectionKey, e.target.value); debouncedLint(sectionKey, e.target.value); }}
-                className={`p-2 border rounded w-full text-black focus:ring-2 ${validationErrors[sectionKey] ? 'border-red-500' : 'focus:ring-blue-500'}`}
-                rows={5}
-              ></textarea>
-              {validationErrors[sectionKey] && <p className="text-red-500 text-xs mt-1">{validationErrors[sectionKey]}</p>}
-              <button onClick={() => toggleComments(sectionKey)} className="absolute top-0 right-0 p-1 text-gray-500 hover:text-black" aria-label={`Comment on ${section.label}`}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 11a1 1 0 112 0v1a1 1 0 11-2 0v-1zm0-4a1 1 0 112 0v1a1 1 0 11-2 0V7z" clipRule="evenodd" />
-                </svg>
-              </button>
-              {showComments[sectionKey] && (
-                <div className="absolute top-full right-0 w-64 bg-white border rounded-lg shadow-lg z-10" data-testid={`comment-thread-${sectionKey}`}>
-                  <div className="p-2">
-                    <h4 className="font-semibold">Comments</h4>
-                    {comments.filter(c => c.field === sectionKey).map((comment, index) => (
-                      <Comment key={index} comment={comment} />
-                    ))}
-                    <textarea className="w-full p-1 border rounded mt-2" placeholder="Add a comment..." value={commentText} onChange={(e) => setCommentText(e.target.value)}></textarea>
-                    <button onClick={() => handleAddComment(sectionKey, commentText)} className="mt-1 p-1 bg-blue-500 text-white rounded">Add</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {section.placeholder && !section.fields && (
+              <div className="relative">
+                <label htmlFor={sectionKey} className="block text-sm font-medium text-gray-700 mb-1">{section.label}</label>
+                <textarea
+                  id={sectionKey}
+                  name={sectionKey}
+                  placeholder={section.placeholder}
+                  value={resume[sectionKey as keyof typeof resume] as string}
+                  onChange={(e) => { handleFieldChange(sectionKey, sectionKey, e.target.value); debouncedLint(sectionKey, e.target.value); }}
+                  className={`p-2 border rounded w-full text-black focus:ring-2 ${validationErrors[sectionKey] ? 'border-red-500' : 'focus:ring-blue-500'}`}
+                  rows={5}
+                ></textarea>
+                {validationErrors[sectionKey] && <p className="text-red-500 text-xs mt-1">{validationErrors[sectionKey]}</p>}
+                <button onClick={() => toggleComments(sectionKey)} className="absolute top-0 right-0 p-1 text-gray-500 hover:text-black" aria-label={`Comment on ${section.label}`}>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 11a1 1 0 112 0v1a1 1 0 11-2 0v-1zm0-4a1 1 0 112 0v1a1 1 0 11-2 0V7z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                <CommentSystem
+                  fieldId={sectionKey}
+                  showComments={showComments[sectionKey]}
+                  comments={comments}
+                  commentText={commentText}
+                  setCommentText={setCommentText}
+                  handleAddComment={handleAddComment}
+                  CommentComponent={Comment}
+                />
+              </div>
+            )}
+          </section>
+        );
+      })}
 
       {/* Optional Fields Section */}
-      {renderOptionalFields()}
+      <OptionalFieldsManager
+        selectedLocaleData={selectedLocaleData}
+        resume={resume}
+        photoPrivacy={photoPrivacy}
+        setPhotoPrivacy={setPhotoPrivacy}
+        handleOptionalFileUpload={handleOptionalFileUpload}
+        handleOptionalFieldChange={handleOptionalFieldChange}
+      />
 
-      {/* Work Experience Section */}
-      <section className="mb-6">
-        <h3 className="text-xl font-semibold mb-3">Work Experience</h3>
-        {resume.workExperience.map((exp, index) => (
-          <div key={index} className="border p-4 rounded-lg mb-4 bg-gray-50">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              {selectedLocaleData.sections.workExperience.order.map((fieldName: string) => {
-                const field = selectedLocaleData.sections.workExperience.fields![fieldName];
-                const inputId = `workExperience-${index}-${fieldName}`;
-                return (
-                  <div key={fieldName} className="relative">
-                    <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
-                    <input
-                      id={inputId}
-                      type="text"
-                      name={fieldName}
-                      placeholder={field.placeholder}
-                      value={exp[fieldName as keyof typeof exp]}
-                      onChange={(e) => { handleWorkExperienceChange(index, e); debouncedLint(`workExperience-description-${index}`, e.target.value); }}
-                      className={`p-2 border rounded text-black w-full focus:ring-2 ${validationErrors[inputId] ? 'border-red-500' : 'focus:ring-blue-500'}`}
-                    />
-                    {validationErrors[inputId] && <p className="text-red-500 text-xs mt-1">{validationErrors[inputId]}</p>}
-                    <button onClick={() => toggleComments(inputId)} className="absolute top-0 right-0 p-1 text-gray-500 hover:text-black" aria-label={`Comment on ${field.label}`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 11a1 1 0 112 0v1a1 1 0 11-2 0v-1zm0-4a1 1 0 112 0v1a1 1 0 11-2 0V7z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                    {showComments[inputId] && (
-                      <div className="absolute top-full right-0 w-64 bg-white border rounded-lg shadow-lg z-10" data-testid={`comment-thread-${inputId}`}>
-                        <div className="p-2">
-                          <h4 className="font-semibold">Comments</h4>
-                          {comments.filter(c => c.field === inputId).map((comment, index) => (
-                            <Comment key={index} comment={comment} />
-                          ))}
-                          <textarea className="w-full p-1 border rounded mt-2" placeholder="Add a comment..." value={commentText} onChange={(e) => setCommentText(e.target.value)}></textarea>
-                          <button onClick={() => handleAddComment(inputId, commentText)} className="mt-1 p-1 bg-blue-500 text-white rounded">Add</button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="relative">
-              <label htmlFor={`workExperience-description-${index}`} className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea
-                id={`workExperience-description-${index}`}
-                name="description"
-                placeholder={selectedLocaleData.sections.workExperience.fields!.description.placeholder}
-                value={exp.description}
-                onChange={(e) => { handleWorkExperienceChange(index, e); debouncedLint(`workExperience-description-${index}`, e.target.value); }}
-                className={`p-2 border rounded w-full text-black focus:ring-2 ${validationErrors[`workExperience-description-${index}`] ? 'border-red-500' : 'focus:ring-blue-500'}`}
-                rows={4}
-              ></textarea>
-              {validationErrors[`workExperience-description-${index}`] && <p className="text-red-500 text-xs mt-1">{validationErrors[`workExperience-description-${index}`]}</p>}
-              <button onClick={() => toggleComments(`workExperience-description-${index}`)} className="absolute top-0 right-0 p-1 text-gray-500 hover:text-black" aria-label={`Comment on work experience description`}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 11a1 1 0 112 0v1a1 1 0 11-2 0v-1zm0-4a1 1 0 112 0v1a1 1 0 11-2 0V7z" clipRule="evenodd" />
-                </svg>
-              </button>
-              {showComments[`workExperience-description-${index}`] && (
-                <div className="absolute top-full right-0 w-64 bg-white border rounded-lg shadow-lg z-10" data-testid={`comment-thread-workExperience-description-${index}`}>
-                  <div className="p-2">
-                    <h4 className="font-semibold">Comments</h4>
-                    {comments.filter(c => c.field === `workExperience-description-${index}`).map((comment, index) => (
-                      <Comment key={index} comment={comment} />
-                    ))}
-                    <textarea className="w-full p-1 border rounded mt-2" placeholder="Add a comment..." value={commentText} onChange={(e) => setCommentText(e.target.value)}></textarea>
-                    <button onClick={() => handleAddComment(`workExperience-description-${index}`, commentText)} className="mt-1 p-1 bg-blue-500 text-white rounded">Add</button>
-                  </div>
-                </div>
-              )}
-            </div>
-            <button
-              onClick={() => removeWorkExperienceEntry(index)}
-              className="mt-2 p-2 bg-red-500 text-white rounded focus:ring-2 focus:ring-red-500"
-              aria-label={`Remove ${exp.title} work experience`}
-            >
-              Remove Experience
-            </button>
-          </div>
-        ))}
-        <button
-          onClick={addWorkExperienceEntry}
-          className="p-2 bg-blue-500 text-white rounded focus:ring-2 focus:ring-blue-500"
-        >
-          Add Work Experience
-        </button>
-      </section>
 
-      {/* Education Section */}
-      <section className="mb-6">
-        <h3 className="text-xl font-semibold mb-3">Education</h3>
-        {resume.education.map((edu, index) => (
-          <div key={index} className="border p-4 rounded-lg mb-4 bg-gray-50">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              {selectedLocaleData.sections.education.order.map((fieldName: string) => {
-                const field = selectedLocaleData.sections.education.fields![fieldName];
-                const inputId = `education-${index}-${fieldName}`;
-                return (
-                  <div key={fieldName} className="relative">
-                    <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
-                    <input
-                      id={inputId}
-                      type="text"
-                      name={fieldName}
-                      placeholder={field.placeholder}
-                      value={edu[fieldName as keyof typeof edu]}
-                      onChange={(e) => handleEducationChange(index, e)}
-                      className={`p-2 border rounded text-black w-full focus:ring-2 ${validationErrors[inputId] ? 'border-red-500' : 'focus:ring-blue-500'}`}
-                    />
-                    {validationErrors[inputId] && <p className="text-red-500 text-xs mt-1">{validationErrors[inputId]}</p>}
-                    <button onClick={() => toggleComments(inputId)} className="absolute top-0 right-0 p-1 text-gray-500 hover:text-black" aria-label={`Comment on ${field.label}`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 11a1 1 0 112 0v1a1 1 0 11-2 0v-1zm0-4a1 1 0 112 0v1a1 1 0 11-2 0V7z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                    {showComments[inputId] && (
-                      <div className="absolute top-full right-0 w-64 bg-white border rounded-lg shadow-lg z-10" data-testid={`comment-thread-${inputId}`}>
-                        <div className="p-2">
-                          <h4 className="font-semibold">Comments</h4>
-                          {comments.filter(c => c.field === inputId).map((comment, index) => (
-                            <Comment key={index} comment={comment} />
-                          ))}
-                          <textarea className="w-full p-1 border rounded mt-2" placeholder="Add a comment..." value={commentText} onChange={(e) => setCommentText(e.target.value)}></textarea>
-                          <button onClick={() => handleAddComment(inputId, commentText)} className="mt-1 p-1 bg-blue-500 text-white rounded">Add</button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <button
-              onClick={() => removeEducationEntry(index)}
-              className="mt-2 p-2 bg-red-500 text-white rounded focus:ring-2 focus:ring-red-500"
-              aria-label={`Remove ${edu.degree} education entry`}
-            >
-              Remove Education
-            </button>
-          </div>
-        ))}
-        <button
-          onClick={addEducationEntry}
-          className="p-2 bg-blue-500 text-white rounded focus:ring-2 focus:ring-blue-500"
-        >
-          Add Education
-        </button>
-      </section>
-
-      <div className="mt-6 text-center">
-        <input type="file" id="pdf-upload" className="hidden" onChange={handlePdfUpload} aria-hidden="true" />
-        <button
-          onClick={() => document.getElementById('pdf-upload')!.click()}
-          className="p-3 bg-blue-600 text-white rounded-lg text-lg font-semibold mr-4 focus:ring-2 focus:ring-blue-600"
-        >
-          Import from PDF
-        </button>
-        <button
-          onClick={updateVersion}
-          className="p-3 bg-yellow-500 text-white rounded-lg text-lg font-semibold mr-4 focus:ring-2 focus:ring-yellow-500"
-        >
-          New Version ({resume.version})
-        </button>
-        <button
-          onClick={handleExportPdf}
-          className="p-3 bg-green-600 text-white rounded-lg text-lg font-semibold focus:ring-2 focus:ring-green-600"
-        >
-          Export to PDF
-        </button>
-      </div>
+      <ExportControls
+        handlePdfUpload={handlePdfUpload}
+        updateVersion={updateVersion}
+        resume={resume}
+        handleExportPdf={handleExportPdf}
+      />
 
       {/* Non-intrusive ad placement in footer */}
       <div className="mt-8 flex justify-center border-t pt-4">

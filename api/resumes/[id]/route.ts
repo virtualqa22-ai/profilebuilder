@@ -1,9 +1,12 @@
 
-import dbConnect from '@/lib/dbConnect';
+import dbConnect from '../../../backend/dbConnect';
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import '@/models/Resume'; // Ensure the model is loaded
-import { getLocaleByCode, ILocale } from '@/lib/localeService';
+import '../../../backend/models/Resume'; // Ensure the model is loaded
+import { getLocaleByCode, ILocale } from '../../../backend/lib/localeService';
+import { getCacheManager, CacheKeys } from '../../../backend/lib/cacheManager';
+import { requireAuth } from '../../../backend/lib/auth';
+import { validateResumeData } from '../../../shared/validations';
 
 
 function setSecurityHeaders(res: NextResponse) {
@@ -16,6 +19,9 @@ function setSecurityHeaders(res: NextResponse) {
 }
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
+  // Check authentication
+  const authResult = await requireAuth(req);
+  if (authResult) return authResult;
   await dbConnect();
   const Resume = mongoose.model('Resume');
   const { id } = params;
@@ -46,6 +52,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
+  // Check authentication
+  const authResult = await requireAuth(req as any);
+  if (authResult) return authResult;
+
   await dbConnect();
   const Resume = mongoose.model('Resume');
   const { id } = params;
@@ -70,55 +80,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       return res;
     }
 
-    const validateResumeData = (data: any, schema: ILocale) => {
-      const errors: Record<string, string> = {};
-
-      Object.entries(schema.sections).forEach(([sectionKey, section]) => {
-        if (section.fields && section.order) {
-          section.order.forEach((fieldName: string) => {
-            const field = section.fields![fieldName];
-            const inputId = `${sectionKey}-${fieldName}`;
-            if (!field.optional && !data[sectionKey]?.[fieldName]) {
-              errors[inputId] = `${field.label} is required.`;
-            }
-          });
-        } else if (section.placeholder && !section.fields) {
-          const isSectionOptional = (schema.sections as any)[sectionKey]?.optional;
-          if (!isSectionOptional && !data[sectionKey]) {
-            errors[sectionKey] = `${section.label} is required.`;
-          }
-        }
-      });
-
-      // Validate work experience
-      if (data.workExperience) {
-        data.workExperience.forEach((exp: any, index: number) => {
-          schema.sections.workExperience.order.forEach((fieldName: string) => {
-            const field = schema.sections.workExperience.fields![fieldName];
-            const inputId = `workExperience-${index}-${fieldName}`;
-            if (!field.optional && !exp[fieldName]) {
-              errors[inputId] = `${field.label} in Work Experience #${index + 1} is required.`;
-            }
-          });
-        });
-      }
-
-      // Validate education
-      if (data.education) {
-        data.education.forEach((edu: any, index: number) => {
-          schema.sections.education.order.forEach((fieldName: string) => {
-            const field = schema.sections.education.fields![fieldName];
-            const inputId = `education-${index}-${fieldName}`;
-            if (!field.optional && !edu[fieldName]) {
-              errors[inputId] = `${field.label} in Education #${index + 1} is required.`;
-            }
-          });
-        });
-      }
-
-      return errors;
-    };
-
     const validationErrors = validateResumeData(resumeData, selectedLocaleData);
 
     if (Object.keys(validationErrors).length > 0) {
@@ -140,6 +101,12 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       setSecurityHeaders(res);
       return res;
     }
+
+    // Invalidate cache entries affected by the update
+    const cacheManager = getCacheManager();
+    await cacheManager.invalidatePattern('resumes:list:*');
+    await cacheManager.delete(CacheKeys.resume(id));
+
     const res = NextResponse.json({ success: true, data: resume });
     setSecurityHeaders(res);
     return res;
@@ -151,6 +118,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+  // Check authentication
+  const authResult = await requireAuth(req as any);
+  if (authResult) return authResult;
+
   await dbConnect();
   const Resume = mongoose.model('Resume');
   const { id } = params;
@@ -161,6 +132,12 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       setSecurityHeaders(res);
       return res;
     }
+
+    // Invalidate cache entries affected by the deletion
+    const cacheManager = getCacheManager();
+    await cacheManager.invalidatePattern('resumes:list:*');
+    await cacheManager.delete(CacheKeys.resume(id));
+
     const res = NextResponse.json({ success: true, data: {} }, { status: 200 });
     setSecurityHeaders(res);
     return res;

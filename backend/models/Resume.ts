@@ -1,6 +1,33 @@
 import mongoose from 'mongoose';
 import { encrypt, decrypt } from '../lib/encryption';
 
+// Define sensitive fields that require encryption/decryption
+const sensitiveFields = ['content', 'photos', 'certifications', 'hobbies', 'references'];
+
+// Helper function to encrypt sensitive fields in a document or update object
+function encryptFields(obj: any) {
+  sensitiveFields.forEach(field => {
+    if (obj[field]) {
+      obj[field] = encrypt(obj[field]);
+    }
+  });
+}
+
+// Helper function to decrypt sensitive fields in a document
+function decryptFields(doc: any) {
+  if (!doc) return;
+  sensitiveFields.forEach(field => {
+    if (doc[field]) {
+      doc[field] = decrypt(doc[field]);
+    }
+  });
+}
+
+// Helper function to decrypt fields in an array of documents
+function decryptFieldsInArray(docs: any[]) {
+  docs.forEach(doc => decryptFields(doc));
+}
+
 const CommentSchema = new mongoose.Schema({
   field: {
     type: String,
@@ -64,63 +91,73 @@ ResumeSchema.index({ locale: 1, createdAt: -1 });
 
 // Encrypt sensitive fields before saving
 ResumeSchema.pre('save', function(next) {
-  if (this.isModified('content')) {
-    this.content = encrypt(this.content);
+  sensitiveFields.forEach(field => {
+    if (this.isModified(field)) {
+      this[field] = encrypt(this[field]);
+    }
+  });
+  next();
+});
+
+// Encrypt sensitive fields before updating
+ResumeSchema.pre('updateOne', function(next) {
+  const update = this.getUpdate() as any;
+  if (update && typeof update === 'object') {
+    if (update.$set) {
+      encryptFields(update.$set);
+    }
+    encryptFields(update);
   }
-  if (this.isModified('photos') && this.photos) {
-    this.photos = encrypt(this.photos);
+  next();
+});
+
+ResumeSchema.pre('findOneAndUpdate', function(next) {
+  const update = this.getUpdate() as any;
+  if (update && typeof update === 'object') {
+    if (update.$set) {
+      encryptFields(update.$set);
+    }
+    encryptFields(update);
   }
-  if (this.isModified('certifications') && this.certifications) {
-    this.certifications = encrypt(this.certifications);
-  }
-  if (this.isModified('hobbies') && this.hobbies) {
-    this.hobbies = encrypt(this.hobbies);
-  }
-  if (this.isModified('references') && this.references) {
-    this.references = encrypt(this.references);
+  next();
+});
+
+ResumeSchema.pre('findOneAndReplace', function(next) {
+  const replacement = this.getUpdate() as any;
+  encryptFields(replacement);
+  next();
+});
+
+ResumeSchema.pre('updateMany', function(next) {
+  const update = this.getUpdate() as any;
+  if (update && typeof update === 'object') {
+    if (update.$set) {
+      encryptFields(update.$set);
+    }
+    encryptFields(update);
   }
   next();
 });
 
 // Decrypt sensitive fields after finding
 ResumeSchema.post('find', function(docs) {
-  docs.forEach(doc => {
-    if (doc.content) {
-      doc.content = decrypt(doc.content);
-    }
-    if (doc.photos) {
-      doc.photos = decrypt(doc.photos);
-    }
-    if (doc.certifications) {
-      doc.certifications = decrypt(doc.certifications);
-    }
-    if (doc.hobbies) {
-      doc.hobbies = decrypt(doc.hobbies);
-    }
-    if (doc.references) {
-      doc.references = decrypt(doc.references);
-    }
-  });
+  decryptFieldsInArray(docs);
 });
 
 ResumeSchema.post('findOne', function(doc) {
-  if (doc) {
-    if (doc.content) {
-      doc.content = decrypt(doc.content);
-    }
-    if (doc.photos) {
-      doc.photos = decrypt(doc.photos);
-    }
-    if (doc.certifications) {
-      doc.certifications = decrypt(doc.certifications);
-    }
-    if (doc.hobbies) {
-      doc.hobbies = decrypt(doc.hobbies);
-    }
-    if (doc.references) {
-      doc.references = decrypt(doc.references);
-    }
-  }
+  decryptFields(doc);
+});
+
+ResumeSchema.post('findOneAndUpdate', function(doc) {
+  decryptFields(doc);
+});
+
+ResumeSchema.post('findOneAndReplace', function(doc) {
+  decryptFields(doc);
+});
+
+ResumeSchema.post('findOneAndDelete', function(doc) {
+  decryptFields(doc);
 });
 
 const Resume = mongoose.models.Resume || mongoose.model('Resume', ResumeSchema);
