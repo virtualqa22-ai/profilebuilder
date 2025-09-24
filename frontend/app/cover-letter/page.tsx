@@ -3,6 +3,7 @@
 
 import React, { useState } from 'react';
 import Classic from '../../features/cover-letter/templates/Classic';
+import Toast from '../../components/ui/Toast';
 
 const CoverLetterBuilderPage = () => {
   const [name, setName] = useState('John Doe');
@@ -22,6 +23,7 @@ const CoverLetterBuilderPage = () => {
   const [signature, setSignature] = useState('John Doe');
   const [jobDescription, setJobDescription] = useState('');
   const [jdSuggestions, setJdSuggestions] = useState<string[]>([]);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   const handleJdParse = async () => {
     if (!jobDescription) return;
@@ -59,12 +61,12 @@ const CoverLetterBuilderPage = () => {
       });
       const data = await response.json();
       if (response.ok) {
-        alert(data.message);
+        setToast({ message: data.message, type: 'success' });
       } else {
-        alert(`Error: ${data.error}`);
+        setToast({ message: `Error: ${data.error}`, type: 'error' });
       }
     } catch (error) {
-      alert('Failed to export PDF.');
+      setToast({ message: 'Failed to export PDF.', type: 'error' });
       console.error('Failed to export PDF:', error);
     }
   };
@@ -84,12 +86,12 @@ const CoverLetterBuilderPage = () => {
       });
       const data = await response.json();
       if (response.ok) {
-        alert(data.message);
+        setToast({ message: data.message, type: 'success' });
       } else {
-        alert(`Error: ${data.error}`);
+        setToast({ message: `Error: ${data.error}`, type: 'error' });
       }
     } catch (error) {
-      alert('Failed to export DOCX.');
+      setToast({ message: 'Failed to export DOCX.', type: 'error' });
       console.error('Failed to export DOCX:', error);
     }
   };
@@ -175,6 +177,7 @@ const CoverLetterBuilderPage = () => {
           </div>
         </div>
       </div>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 };

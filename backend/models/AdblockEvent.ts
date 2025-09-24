@@ -8,6 +8,24 @@
 import mongoose from 'mongoose';
 
 /**
+ * Type definitions for AdblockEvent
+ */
+type AdblockEventType = 'blocked' | 'whitelisted' | 'detected' | 'bypassed';
+
+interface IAdblockEvent {
+  hashedUserId: string;
+  adId?: string;
+  eventType: AdblockEventType;
+  timestamp: Date;
+  metadata: Record<string, unknown>;
+  _id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export type { AdblockEventType, IAdblockEvent };
+
+/**
  * AdblockEvent schema definition
  * - hashedUserId: Anonymized user identifier (SHA-256 hash)
  * - adId: Unique identifier for the advertisement (if applicable)

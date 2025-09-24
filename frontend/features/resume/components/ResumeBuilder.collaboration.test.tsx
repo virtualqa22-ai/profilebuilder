@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import ResumeBuilder from './ResumeBuilder';
 import { useResumeStore } from '@/store/resumeStore';
 import { LocaleProvider } from '@/backend/lib/locale';
+import { useSession } from 'next-auth/react';
 
 // Mock the resume store
 jest.mock('@/store/resumeStore', () => ({
@@ -29,6 +30,11 @@ jest.mock('@/backend/lib/locale', () => {
   return { useLocale, LocaleProvider };
 });
 
+// Mock next-auth/react
+jest.mock('next-auth/react', () => ({
+  useSession: jest.fn(),
+}));
+
 // Mock the fetch function
 global.fetch = jest.fn(() =>
   Promise.resolve({
@@ -49,6 +55,14 @@ describe('ResumeBuilder Collaboration', () => {
         comments: [],
       },
       updateLocale: jest.fn(),
+    });
+    (useSession as jest.Mock).mockReturnValue({
+      data: {
+        user: {
+          name: 'Test User',
+          email: 'test@example.com',
+        },
+      },
     });
   });
 
@@ -76,7 +90,7 @@ describe('ResumeBuilder Collaboration', () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ field: 'personalInfo-name', text: 'This is a test comment', author: 'User' }),
+        body: JSON.stringify({ field: 'personalInfo-name', text: 'This is a test comment', author: 'Test User' }),
       });
     });
   });

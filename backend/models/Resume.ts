@@ -1,6 +1,35 @@
 import mongoose from 'mongoose';
 import { encrypt, decrypt } from '../lib/encryption';
 
+/**
+ * Type definitions for Resume
+ */
+interface IComment {
+  field: string;
+  text: string;
+  author: string;
+  _id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+interface IResume {
+  title: string;
+  content: string;
+  locale: string;
+  version: number;
+  photos?: string;
+  certifications?: string;
+  hobbies?: string;
+  references?: string;
+  comments: IComment[];
+  _id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export type { IComment, IResume };
+
 // Define sensitive fields that require encryption/decryption
 const sensitiveFields = ['content', 'photos', 'certifications', 'hobbies', 'references'];
 

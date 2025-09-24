@@ -1,20 +1,27 @@
 import { create } from 'zustand';
 
+/**
+ * Type definitions for resume form data
+ */
+type DateString = string; // ISO date string format
+type UrlString = string; // URL string
+type EmailString = string; // Email string
+
 interface PersonalInfo {
   name: string;
-  email: string;
+  email: EmailString;
   phone: string;
-  linkedin: string;
-  github: string;
-  website: string;
+  linkedin: UrlString;
+  github: UrlString;
+  website: UrlString;
 }
 
 interface WorkExperience {
   title: string;
   company: string;
   location: string;
-  startDate: string;
-  endDate: string;
+  startDate: DateString;
+  endDate: DateString;
   description: string;
 }
 
@@ -23,8 +30,8 @@ interface Education {
   major: string;
   university: string;
   location: string;
-  startDate: string;
-  endDate: string;
+  startDate: DateString;
+  endDate: DateString;
 }
 
 export interface ResumeData {

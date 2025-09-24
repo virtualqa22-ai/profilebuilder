@@ -21,6 +21,28 @@ import mongoose from 'mongoose';
 import { encrypt, decrypt } from '../lib/encryption';
 
 /**
+ * Type definitions for ErasureRequest
+ */
+type ErasureStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+interface IErasureRequest {
+  userId: string; // mongoose.Schema.Types.ObjectId as string
+  requestId: string;
+  reason: string;
+  status: ErasureStatus;
+  requestedAt: Date;
+  completedAt?: Date;
+  ipAddress: string;
+  userAgent: string;
+  estimatedCompletion: Date;
+  _id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export type { ErasureStatus, IErasureRequest };
+
+/**
  * ErasureRequest schema definition
  * - userId: Reference to the user requesting erasure
  * - requestId: Unique identifier for the erasure request

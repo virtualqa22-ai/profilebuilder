@@ -12,6 +12,31 @@ import { SECURITY_EVENT_TYPES, SECURITY_SEVERITY_LEVELS } from '../lib/constants
 import { createStandardImmutableHooks } from '../lib/modelUtils';
 
 /**
+ * Type definitions for SecurityEvent
+ */
+type SecurityEventType = typeof SECURITY_EVENT_TYPES[keyof typeof SECURITY_EVENT_TYPES];
+type SecuritySeverityLevel = typeof SECURITY_SEVERITY_LEVELS[keyof typeof SECURITY_SEVERITY_LEVELS];
+
+interface ISecurityEvent {
+  userId?: string; // mongoose.Schema.Types.ObjectId as string
+  eventType: SecurityEventType;
+  severity: SecuritySeverityLevel;
+  correlationId: string;
+  timestamp: Date;
+  ipAddress: string;
+  userAgent: string;
+  location?: string;
+  details: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  alertTriggered: boolean;
+  _id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export type { SecurityEventType, SecuritySeverityLevel, ISecurityEvent };
+
+/**
  * SecurityEvent schema definition
  * - userId: Reference to the user (can be null for system events)
  * - eventType: Type of security event

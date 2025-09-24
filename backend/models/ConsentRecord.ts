@@ -19,6 +19,28 @@ import mongoose from 'mongoose';
 import { encrypt, decrypt } from '../lib/encryption';
 
 /**
+ * Type definitions for ConsentRecord
+ */
+type ConsentPurpose = 'account_management' | 'resume_building' | 'analytics' | 'marketing' | 'legal_compliance';
+type ConsentStatus = 'granted' | 'denied' | 'withdrawn' | 'expired';
+
+interface IConsentRecord {
+  userId: string; // mongoose.Schema.Types.ObjectId as string
+  purpose: ConsentPurpose;
+  status: ConsentStatus;
+  grantedAt: Date;
+  expiresAt?: Date;
+  withdrawnAt?: Date;
+  ipAddress: string;
+  userAgent: string;
+  _id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export type { ConsentPurpose, ConsentStatus, IConsentRecord };
+
+/**
  * ConsentRecord schema definition
  * - userId: Reference to the user
  * - purpose: Data processing purpose

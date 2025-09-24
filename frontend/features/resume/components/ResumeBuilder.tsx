@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useResumeStore } from '@/store/resumeStore';
 import { getLocaleByCode, ILocale } from '@/backend/lib/localeService';
@@ -8,12 +8,14 @@ import Comment from './Comment';
 import LocaleSelector from '@/frontend/components/ui/LocaleSelector';
 import ErrorBoundary from '@/frontend/components/ui/ErrorBoundary';
 import AdComponent from '@/frontend/components/AdComponent';
+import Toast from '@/frontend/components/ui/Toast';
 import PersonalInfoForm from './forms/PersonalInfoForm';
 import WorkExperienceSection from './sections/WorkExperienceSection';
 import EducationSection from './sections/EducationSection';
 import OptionalFieldsManager from './managers/OptionalFieldsManager';
 import CommentSystem from './comments/CommentSystem';
 import ExportControls from './controls/ExportControls';
+import HighlightedTextarea from './HighlightedTextarea';
 
 interface ResumeBuilderProps {
   locale: string;
@@ -44,10 +46,10 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
       if (data.success) {
         setResume({ ...resume, [field]: data.url });
       } else {
-        alert(data.error || 'Upload failed');
+        setToast({ message: data.error || 'Upload failed', type: 'error' });
       }
     } catch (e) {
-      alert('Upload failed');
+      setToast({ message: 'Upload failed', type: 'error' });
     }
   };
 
@@ -143,7 +145,6 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
   const [showComments, setShowComments] = useState<Record<string, boolean>>({});
   const [comments, setComments] = useState<any[]>([]);
   const [showOptionalFields, setShowOptionalFields] = useState<Record<string, boolean>>({});
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   
   const [lintResults, setLintResults] = useState<Record<string, { issues: any[], score: number }>>({});
 
@@ -173,12 +174,13 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
         console.error('Lint error:', error);
       }
     }, 500);
+  }, []);
+
   const debouncedSave = useCallback((resumeId: string, data: any) => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
     saveTimeoutRef.current = setTimeout(async () => {
-      setSaveStatus('saving');
       try {
         const response = await fetch(`/api/resumes/${resumeId}`, {
           method: 'PUT',
@@ -188,9 +190,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
           body: JSON.stringify(data),
         });
         const result = await response.json();
-        if (result.success) {
-          setSaveStatus('saved');
-        } else {
+        if (!result.success) {
           throw new Error(result.error || 'Save failed');
         }
       } catch (error) {
@@ -199,37 +199,21 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
       }
     }, 2500);
   }, []);
-  }, []);
 
   useEffect(() => {
     updateLocale(locale);
   }, [locale, updateLocale]);
 
   useEffect(() => {
-    setSaveStatus('saving');
-    const handler = setTimeout(async () => {
-      try {
-        console.log('Autosaving resume:', resume);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setSaveStatus('saved');
-      } catch (error) {
-        console.error('Failed to autosave:', error);
-        setSaveStatus('error');
-      }
-    }, 1000);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [resume]);
+    setSaveStatus('saved');
+    debouncedSave(resume._id, resume);
+  }, [resume, debouncedSave]);
   // Memoize validation errors to only recalculate when resume or locale data changes
-  useEffect(() => {
+  const validationErrors = useMemo(() => {
     if (!selectedLocaleData) {
-      setValidationErrors({});
-      return;
+      return {};
     }
-    const errors = validateResumeData(resume, selectedLocaleData);
-    setValidationErrors(errors);
+    return validateResumeData(resume, selectedLocaleData);
   }, [resume, selectedLocaleData]);
 
   const handleFieldChange = (sectionKey: string, fieldName: string, value: string) => {
@@ -388,6 +372,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
   };
 
   const [commentText, setCommentText] = useState('');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   const toggleComments = (field: string) => {
     setShowComments(prev => ({ ...prev, [field]: !prev[field] }));
@@ -604,6 +589,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
           size="banner"
         />
       </div>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 };

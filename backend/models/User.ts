@@ -7,6 +7,20 @@
 import mongoose from 'mongoose';
 
 /**
+ * Type definitions for User
+ */
+interface IUser {
+  email: string;
+  name?: string;
+  privacyMode: boolean;
+  _id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export type { IUser };
+
+/**
  * User schema definition
  * - email: Unique identifier for the user
  * - name: Optional display name

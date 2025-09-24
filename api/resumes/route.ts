@@ -123,10 +123,11 @@ export async function POST(req: Request) {
     // Create the resume
     const resume = await Resume.create({ ...resumeData, locale });
 
-    // Invalidate all related cache keys when new resume is created
-    // This ensures data consistency across all cached paginated results
+    // Invalidate related cache keys selectively when new resume is created
+    // This ensures data consistency for the specific locale and 'all' locale caches
     const cacheManager = getCacheManager();
-    await cacheManager.invalidatePattern('resumes:list:*');
+    await cacheManager.invalidatePattern(`resumes:list:*:*:${locale}:*:*:*`);
+    await cacheManager.invalidatePattern('resumes:list:*:*:all:*:*:*');
 
     const res = NextResponse.json({ success: true, data: resume }, { status: 201 });
     applySecurityHeaders(res);

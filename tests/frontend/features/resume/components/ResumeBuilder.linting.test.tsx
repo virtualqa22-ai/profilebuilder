@@ -16,6 +16,21 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import '@testing-library/jest-dom';
 import ResumeBuilder from '../../../../../../frontend/features/resume/components/ResumeBuilder';
 
+// Mock next-auth
+jest.mock('next-auth/react', () => ({
+  useSession: jest.fn(() => ({
+    data: { user: { id: '1', name: 'Test User' } },
+    status: 'authenticated',
+  })),
+}));
+
+// Mock IntersectionObserver
+global.IntersectionObserver = jest.fn(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}));
+
 // Mock all dependencies
 jest.mock('../../../../../../frontend/store/resumeStore', () => ({
   useResumeStore: jest.fn(() => ({

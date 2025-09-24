@@ -8,6 +8,24 @@
 import mongoose from 'mongoose';
 
 /**
+ * Type definitions for AdMetric
+ */
+type AdMetricEventType = 'impression' | 'click' | 'view' | 'hover' | 'close';
+
+interface IAdMetric {
+  hashedUserId: string;
+  adId: string;
+  eventType: AdMetricEventType;
+  timestamp: Date;
+  metadata: Record<string, unknown>;
+  _id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export type { AdMetricEventType, IAdMetric };
+
+/**
  * AdMetric schema definition
  * - hashedUserId: Anonymized user identifier (SHA-256 hash)
  * - adId: Unique identifier for the advertisement

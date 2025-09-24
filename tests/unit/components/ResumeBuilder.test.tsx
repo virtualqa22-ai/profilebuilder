@@ -4,6 +4,21 @@ import ResumeBuilder from '../../../frontend/features/resume/components/ResumeBu
 import { useResumeStore } from '../../../frontend/store/resumeStore';
 import { LocaleProvider } from '../../../backend/lib/locale';
 
+// Mock next-auth
+jest.mock('next-auth/react', () => ({
+  useSession: jest.fn(() => ({
+    data: { user: { id: '1', name: 'Test User' } },
+    status: 'authenticated',
+  })),
+}));
+
+// Mock IntersectionObserver
+global.IntersectionObserver = jest.fn(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}));
+
 // Mock the resume store
 jest.mock('../../../frontend/store/resumeStore', () => ({
   useResumeStore: jest.fn(),

@@ -23,6 +23,29 @@ import { encrypt, decrypt } from '../lib/encryption';
 import { createStandardImmutableHooks } from '../lib/modelUtils';
 
 /**
+ * Type definitions for AuditLog
+ */
+type AuditAction = 'access' | 'modify' | 'delete' | 'export' | 'consent_granted' | 'consent_withdrawn';
+type AuditResourceType = 'user' | 'resume' | 'consent';
+
+interface IAuditLog {
+  userId?: string; // mongoose.Schema.Types.ObjectId as string
+  action: AuditAction;
+  resourceType: AuditResourceType;
+  resourceId: string;
+  timestamp: Date;
+  ipAddress: string;
+  userAgent: string;
+  performedBy: string;
+  details?: string;
+  _id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export type { AuditAction, AuditResourceType, IAuditLog };
+
+/**
  * AuditLog schema definition
  * - userId: Reference to the user (can be null for system actions)
  * - action: Type of action performed (access, modify, delete, export, consent_granted, consent_withdrawn)

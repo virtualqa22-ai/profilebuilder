@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import localesData from '@/backend/data/locales.json';
+import Toast from '../../components/ui/Toast';
 
 type Locale = {
   country: string;
@@ -21,6 +22,7 @@ export default function AdminLocaleEditor() {
   const [locales, setLocales] = useState<Locale[]>(localeObjects);
   const [selected, setSelected] = useState<string>(locales[0]?.countryCode || '');
   const [edit, setEdit] = useState('');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   const handleSelect = (countryCode: string) => {
     setSelected(countryCode);
@@ -32,9 +34,9 @@ export default function AdminLocaleEditor() {
     try {
       const updated: Locale = JSON.parse(edit);
       setLocales(locales.map(l => l.countryCode === updated.countryCode ? updated : l));
-      alert('Locale updated (in-memory only, add API to persist)');
+      setToast({ message: 'Locale updated (in-memory only, add API to persist)', type: 'success' });
     } catch {
-      alert('Invalid JSON');
+      setToast({ message: 'Invalid JSON', type: 'error' });
     }
   };
 
@@ -62,6 +64,7 @@ export default function AdminLocaleEditor() {
           <button className="mt-2 p-2 bg-blue-600 text-white rounded" onClick={handleSave}>Save (in-memory)</button>
         </section>
       </div>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </main>
   );
 }
