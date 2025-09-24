@@ -1,23 +1,34 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { NextRequest, NextResponse } from 'next/server';
 import Resume from '../../../backend/models/Resume';
 import User from '../../../backend/models/User';
-import { connectToDatabase } from '../../../backend/dbConnect';
+import dbConnect from '../../../backend/dbConnect';
+import { requireAuth } from '../../../backend/lib/auth';
+import { applySecurityHeaders } from '../../../backend/lib/errorHandler';
 
-export async function DELETE() {
+/**
+ * DELETE /api/user/delete
+ * Permanently deletes user account and all associated data
+ * Requires authentication
+ * WARNING: This operation is irreversible
+ */
+export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Authenticate user
+    const session = await requireAuth(request);
+    if (session instanceof NextResponse) return session;
 
-    await connectToDatabase();
+    await dbConnect();
     // Delete user and all associated data
     await User.findOneAndDelete({ email: session.user.email });
-    await Resume.deleteMany({}); // In real app, filter by user ID
+    await Resume.deleteMany({ userId: session.user.id }); // Filter by user ID for proper data isolation
 
-    return NextResponse.json({ message: 'Account deleted successfully' });
+    const response = NextResponse.json({ message: 'Account deleted successfully' });
+    applySecurityHeaders(response);
+    return response;
   } catch (error) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Error deleting user account:', error);
+    const response = NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    applySecurityHeaders(response);
+    return response;
   }
 }

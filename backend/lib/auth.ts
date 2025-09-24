@@ -10,6 +10,21 @@ import { getServerSession } from 'next-auth';
 import NextAuth from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import LinkedInProvider from 'next-auth/providers/linkedin';
+// Validate required NextAuth environment variables
+const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET;
+const NEXTAUTH_URL = process.env.NEXTAUTH_URL;
+
+if (!NEXTAUTH_SECRET) {
+  throw new Error(
+    'Please define the NEXTAUTH_SECRET environment variable inside .env.local'
+  );
+}
+
+if (!NEXTAUTH_URL) {
+  throw new Error(
+    'Please define the NEXTAUTH_URL environment variable inside .env.local'
+  );
+}
 import CredentialsProvider from 'next-auth/providers/credentials';
 
 /**
@@ -75,17 +90,37 @@ export const authOptions = {
    */
   pages: {
     signIn: "/auth/signin",
+   /**
+    * Callbacks for customizing JWT and session handling
+    * Ensures proper session population with user data
+    */
+   callbacks: {
+     async jwt({ token, user }) {
+       // Add user ID to token on sign in
+       if (user) {
+         token.id = user.id;
+       }
+       return token;
+     },
+     async session({ session, token }) {
+       // Populate session with user ID from token
+       if (token?.id) {
+         session.user.id = token.id;
+       }
+       return session;
+     },
+   },
   },
 };
 
 /**
  * Authentication middleware function
- * Checks for valid NextAuth session and returns appropriate error response for unauthenticated requests
+ * Checks for valid NextAuth session and returns session data or error response
  *
  * @param request - The incoming request object
- * @returns NextResponse if unauthorized, null if authenticated
+ * @returns NextResponse if unauthorized, session object if authenticated
  */
-export async function requireAuth(request: NextRequest): Promise<NextResponse | null> {
+export async function requireAuth(request: NextRequest): Promise<NextResponse | any> {
   try {
     // Get server session using NextAuth options
     const session = await getServerSession(authOptions);
@@ -108,8 +143,8 @@ export async function requireAuth(request: NextRequest): Promise<NextResponse | 
       );
     }
 
-    // Session is valid, allow request to proceed
-    return null;
+    // Session is valid, return session data
+    return session;
   } catch (error) {
     console.error('Authentication middleware error:', error);
 

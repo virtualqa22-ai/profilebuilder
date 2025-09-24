@@ -1,4 +1,3 @@
-
 import dbConnect from '../../../backend/dbConnect';
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
@@ -6,101 +5,127 @@ import '../../../backend/models/Resume'; // Ensure the model is loaded
 import { getLocaleByCode, ILocale } from '../../../backend/lib/localeService';
 import { getCacheManager, CacheKeys } from '../../../backend/lib/cacheManager';
 import { requireAuth } from '../../../backend/lib/auth';
-import { validateResumeData } from '../../../shared/validations';
+import { validateResumeModelData } from '../../../backend/lib/validations';
+import { applySecurityHeaders, createErrorResponse, ERROR_CODES } from '../../../backend/lib/errorHandler';
 
-
-function setSecurityHeaders(res: NextResponse) {
-  res.headers.set('X-Content-Type-Options', 'nosniff');
-  res.headers.set('X-Frame-Options', 'SAMEORIGIN');
-  res.headers.set('X-XSS-Protection', '1; mode=block');
-  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.headers.set('Permissions-Policy', 'geolocation=(), microphone=()');
-  res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
-}
-
+/**
+ * GET /api/resumes/[id]
+ * Retrieves a specific resume by ID
+ * Requires authentication and user ownership
+ */
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   // Check authentication
-  const authResult = await requireAuth(req);
-  if (authResult) return authResult;
-  await dbConnect();
-  const Resume = mongoose.model('Resume');
-  const { id } = params;
-
-  // Parse query parameters for selective field retrieval
-  const url = new URL(req.url);
-  const includeContent = url.searchParams.get('includeContent') !== 'false'; // Default to true for individual resume view
+  const session = await requireAuth(req as any);
+  if (session instanceof NextResponse) return session;
 
   try {
+    // Get authenticated user
+    if (!session?.user?.email) {
+      return createErrorResponse('User session not found', 401, ERROR_CODES.UNAUTHORIZED);
+    }
+    await dbConnect();
+    const UserModel = mongoose.model('User');
+    const user = await UserModel.findOne({ email: session.user.email });
+    if (!user) {
+      return createErrorResponse('User not found', 404, ERROR_CODES.NOT_FOUND);
+    }
+
+    const Resume = mongoose.model('Resume');
+    const { id } = params;
+
+    // Check if resume exists
+    const resume = await Resume.findById(id);
+    if (!resume) {
+      return createErrorResponse('Resume not found', 404, ERROR_CODES.NOT_FOUND);
+    }
+
+    // Check ownership
+    if (resume.userId.toString() !== user._id.toString()) {
+      return createErrorResponse('Access denied: Resume does not belong to user', 403, ERROR_CODES.FORBIDDEN);
+    }
+
+    // Parse query parameters for selective field retrieval
+    const url = new URL(req.url);
+    const includeContent = url.searchParams.get('includeContent') !== 'false'; // Default to true for individual resume view
+
     // Define projection based on includeContent parameter
     // For individual resume view, include content by default but allow exclusion for metadata-only requests
     const projection = includeContent ? {} : { content: 0, photos: 0, certifications: 0, hobbies: 0, references: 0 };
 
-    const resume = await Resume.findById(id, projection);
-    if (!resume) {
-      const res = NextResponse.json({ success: false, error: 'Resume not found' }, { status: 404 });
-      setSecurityHeaders(res);
-      return res;
-    }
-    const res = NextResponse.json({ success: true, data: resume });
-    setSecurityHeaders(res);
+    // Re-fetch with projection if needed
+    const resumeData = includeContent ? resume : await Resume.findById(id, projection);
+
+    const res = NextResponse.json({ success: true, data: resumeData });
+    applySecurityHeaders(res);
     return res;
-  } catch (error) {
-    const res = NextResponse.json({ success: false, error: error.message }, { status: 400 });
-    setSecurityHeaders(res);
-    return res;
+  } catch (error: any) {
+    return createErrorResponse(`Failed to retrieve resume: ${error.message}`, 500, ERROR_CODES.INTERNAL_ERROR);
   }
 }
 
+/**
+ * PUT /api/resumes/[id]
+ * Updates a specific resume by ID
+ * Requires authentication and user ownership
+ */
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   // Check authentication
-  const authResult = await requireAuth(req as any);
-  if (authResult) return authResult;
+  const session = await requireAuth(req as any);
+  if (session instanceof NextResponse) return session;
 
-  await dbConnect();
-  const Resume = mongoose.model('Resume');
-  const { id } = params;
   try {
+    // Get authenticated user
+    if (!session?.user?.email) {
+      return createErrorResponse('User session not found', 401, ERROR_CODES.UNAUTHORIZED);
+    }
+    await dbConnect();
+    const UserModel = mongoose.model('User');
+    const user = await UserModel.findOne({ email: session.user.email });
+    if (!user) {
+      return createErrorResponse('User not found', 404, ERROR_CODES.NOT_FOUND);
+    }
+
+    const Resume = mongoose.model('Resume');
+    const { id } = params;
+
+    // Check if resume exists
+    const existingResume = await Resume.findById(id);
+    if (!existingResume) {
+      return createErrorResponse('Resume not found', 404, ERROR_CODES.NOT_FOUND);
+    }
+
+    // Check ownership
+    if (existingResume.userId.toString() !== user._id.toString()) {
+      return createErrorResponse('Access denied: Resume does not belong to user', 403, ERROR_CODES.FORBIDDEN);
+    }
+
     const body = await req.json();
     let { locale, ...resumeData } = body;
 
-    // If locale is not provided in the body, try to get it from the existing resume
+    // If locale is not provided in the body, use the existing locale
     if (!locale) {
-      const existingResume = await Resume.findById(id);
-      if (existingResume && existingResume.locale) {
-        locale = existingResume.locale;
-      } else {
-        locale = 'en-US'; // Default locale if not found
-      }
+      locale = existingResume.locale || 'en-US';
     }
 
     const selectedLocaleData = getLocaleByCode(locale);
     if (!selectedLocaleData) {
-      const res = NextResponse.json({ success: false, error: 'Invalid locale provided' }, { status: 400 });
-      setSecurityHeaders(res);
-      return res;
+      return createErrorResponse('Invalid locale provided', 400, ERROR_CODES.BAD_REQUEST);
     }
 
-    const validationErrors = validateResumeData(resumeData, selectedLocaleData);
+    const validationErrors = validateResumeModelData({ ...resumeData, locale });
 
     if (Object.keys(validationErrors).length > 0) {
-      const res = NextResponse.json({ success: false, errors: validationErrors }, { status: 400 });
-      setSecurityHeaders(res);
-      return res;
+      return createErrorResponse('Validation failed', 400, ERROR_CODES.BAD_REQUEST, validationErrors);
     }
 
-    const resume = await Resume.findByIdAndUpdate(
-      id,
+    const resume = await Resume.findOneAndUpdate(
+      { _id: id, userId: user._id },
       { ...resumeData, $inc: { version: 1 } },
       {
         new: true,
         runValidators: true,
       }
     );
-    if (!resume) {
-      const res = NextResponse.json({ success: false, error: 'Resume not found' }, { status: 404 });
-      setSecurityHeaders(res);
-      return res;
-    }
 
     // Invalidate cache entries affected by the update
     const cacheManager = getCacheManager();
@@ -108,29 +133,52 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     await cacheManager.delete(CacheKeys.resume(id));
 
     const res = NextResponse.json({ success: true, data: resume });
-    setSecurityHeaders(res);
+    applySecurityHeaders(res);
     return res;
   } catch (error: any) {
-    const res = NextResponse.json({ success: false, error: error.message }, { status: 400 });
-    setSecurityHeaders(res);
-    return res;
+    return createErrorResponse(`Failed to update resume: ${error.message}`, 500, ERROR_CODES.INTERNAL_ERROR);
   }
 }
 
+/**
+ * DELETE /api/resumes/[id]
+ * Deletes a specific resume by ID
+ * Requires authentication and user ownership
+ */
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   // Check authentication
-  const authResult = await requireAuth(req as any);
-  if (authResult) return authResult;
+  const session = await requireAuth(req as any);
+  if (session instanceof NextResponse) return session;
 
-  await dbConnect();
-  const Resume = mongoose.model('Resume');
-  const { id } = params;
   try {
-    const deletedResume = await Resume.deleteOne({ _id: id });
+    // Get authenticated user
+    if (!session?.user?.email) {
+      return createErrorResponse('User session not found', 401, ERROR_CODES.UNAUTHORIZED);
+    }
+    await dbConnect();
+    const UserModel = mongoose.model('User');
+    const user = await UserModel.findOne({ email: session.user.email });
+    if (!user) {
+      return createErrorResponse('User not found', 404, ERROR_CODES.NOT_FOUND);
+    }
+
+    const Resume = mongoose.model('Resume');
+    const { id } = params;
+
+    // Check if resume exists
+    const resume = await Resume.findById(id);
+    if (!resume) {
+      return createErrorResponse('Resume not found', 404, ERROR_CODES.NOT_FOUND);
+    }
+
+    // Check ownership
+    if (resume.userId.toString() !== user._id.toString()) {
+      return createErrorResponse('Access denied: Resume does not belong to user', 403, ERROR_CODES.FORBIDDEN);
+    }
+
+    const deletedResume = await Resume.deleteOne({ _id: id, userId: user._id });
     if (!deletedResume.deletedCount) {
-      const res = NextResponse.json({ success: false, error: 'Resume not found' }, { status: 404 });
-      setSecurityHeaders(res);
-      return res;
+      return createErrorResponse('Resume not found', 404, ERROR_CODES.NOT_FOUND);
     }
 
     // Invalidate cache entries affected by the deletion
@@ -138,12 +186,10 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     await cacheManager.invalidatePattern('resumes:list:*');
     await cacheManager.delete(CacheKeys.resume(id));
 
-    const res = NextResponse.json({ success: true, data: {} }, { status: 200 });
-    setSecurityHeaders(res);
+    const res = NextResponse.json({ success: true, data: {} });
+    applySecurityHeaders(res);
     return res;
-  } catch (error) {
-    const res = NextResponse.json({ success: false, error: error.message }, { status: 400 });
-    setSecurityHeaders(res);
-    return res;
+  } catch (error: any) {
+    return createErrorResponse(`Failed to delete resume: ${error.message}`, 500, ERROR_CODES.INTERNAL_ERROR);
   }
 }

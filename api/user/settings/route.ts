@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
 import User from '../../../backend/models/User';
-import { connectToDatabase } from '../../../backend/dbConnect';
+import dbConnect from '../../../backend/dbConnect';
 import { getCacheManager } from '../../../backend/lib/cacheManager';
+import { requireAuth } from '../../../backend/lib/auth';
+import { applySecurityHeaders } from '../../../backend/lib/errorHandler';
 
-export async function GET() {
+/**
+ * GET /api/user/settings
+ * Retrieves user privacy settings
+ * Requires authentication
+ */
+export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Authenticate user
+    const session = await requireAuth(request);
+    if (session instanceof NextResponse) return session;
 
     const cacheManager = getCacheManager();
     const cacheKey = `user:settings:${session.user.email}`;
@@ -19,10 +24,12 @@ export async function GET() {
 
     if (!settings) {
       // Cache miss - fetch from database
-      await connectToDatabase();
+      await dbConnect();
       const user = await User.findOne({ email: session.user.email });
       if (!user) {
-        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        const response = NextResponse.json({ error: 'User not found' }, { status: 404 });
+        applySecurityHeaders(response);
+        return response;
       }
 
       settings = { privacyMode: user.privacyMode };
@@ -31,21 +38,27 @@ export async function GET() {
       await cacheManager.set(cacheKey, settings, 900);
     }
 
-    return NextResponse.json(settings);
+    const response = NextResponse.json(settings);
+    applySecurityHeaders(response);
+    return response;
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
+/**
+ * PUT /api/user/settings
+ * Updates user privacy settings
+ * Requires authentication
+ */
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Authenticate user
+    const session = await requireAuth(request);
+    if (session instanceof NextResponse) return session;
 
     const { privacyMode } = await request.json();
-    await connectToDatabase();
+    await dbConnect();
     const user = await User.findOneAndUpdate(
       { email: session.user.email },
       { privacyMode },
@@ -56,8 +69,13 @@ export async function PUT(request: NextRequest) {
     const cacheManager = getCacheManager();
     await cacheManager.delete(`user:settings:${session.user.email}`);
 
-    return NextResponse.json({ privacyMode: user.privacyMode });
+    const response = NextResponse.json({ privacyMode: user.privacyMode });
+    applySecurityHeaders(response);
+    return response;
   } catch (error) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Error updating user settings:', error);
+    const response = NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    applySecurityHeaders(response);
+    return response;
   }
 }

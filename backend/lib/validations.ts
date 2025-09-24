@@ -224,3 +224,61 @@ export const validateSecureInput = (data: InputData, schema: ValidationSchema): 
 
   return errors;
 };
+
+/**
+ * Validates Resume model data
+ * @param data - Resume data to validate
+ * @returns Object containing validation errors
+ */
+export const validateResumeModelData = (data: any): ValidationResult => {
+  const errors: Record<string, string> = {};
+
+  // Required fields validation
+  if (!data.title || typeof data.title !== 'string' || data.title.trim().length === 0) {
+    errors.title = 'Title is required and must be a non-empty string';
+  } else if (data.title.length > 100) {
+    errors.title = 'Title cannot exceed 100 characters';
+  }
+
+  if (!data.content || typeof data.content !== 'string' || data.content.trim().length === 0) {
+    errors.content = 'Content is required and must be a non-empty string';
+  }
+
+  if (!data.locale || typeof data.locale !== 'string' || data.locale.trim().length === 0) {
+    errors.locale = 'Locale is required and must be a non-empty string';
+  } else {
+    // Basic locale validation (should be format like en-US, fr-FR, etc.)
+    const localeRegex = /^[a-z]{2}-[A-Z]{2}$/;
+    if (!localeRegex.test(data.locale)) {
+      errors.locale = 'Locale must be in format xx-XX (e.g., en-US)';
+    }
+  }
+
+  // Optional fields validation
+  if (data.version !== undefined && (typeof data.version !== 'number' || data.version < 1)) {
+    errors.version = 'Version must be a positive number';
+  }
+
+  // Optional string fields with XSS/SQL injection checks
+  const optionalStringFields = ['photos', 'certifications', 'hobbies', 'references'];
+  optionalStringFields.forEach(field => {
+    if (data[field] !== undefined) {
+      if (typeof data[field] !== 'string') {
+        errors[field] = `${field} must be a string if provided`;
+      } else {
+        // Check for XSS
+        if (detectXSS(data[field])) {
+          errors[field] = `${field} contains potentially malicious content`;
+        }
+        // Check for SQL injection
+        if (detectSQLInjection(data[field])) {
+          errors[field] = `${field} contains potentially malicious content`;
+        }
+        // Sanitize
+        data[field] = sanitizeString(data[field]);
+      }
+    }
+  });
+
+  return errors;
+};

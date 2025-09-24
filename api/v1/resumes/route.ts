@@ -2,8 +2,9 @@ import dbConnect from '../../../backend/dbConnect';
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import '../../../backend/models/Resume'; // Ensure the model is loaded
+import { getServerSession } from 'next-auth';
 import { getLocaleByCode, ILocale } from '../../../backend/lib/localeService';
-import { validateResumeData } from '../../../backend/lib/validations';
+import { validateResumeModelData } from '../../../backend/lib/validations';
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../../../backend/lib/messages';
 import { SECURITY_HEADERS, DEFAULT_LOCALE, MAX_TITLE_LENGTH } from '../../../backend/lib/constants';
 import { applySecurityHeaders, createErrorResponse, handleDatabaseError, handleValidationError, ERROR_CODES } from '../../../backend/lib/errorHandler';
@@ -13,10 +14,21 @@ import { requireAuth } from '../../../backend/lib/auth';
 
 export async function GET(request: Request) {
   // Check authentication
-  const authResult = await requireAuth(request as any);
-  if (authResult) return authResult;
+  const session = await requireAuth(request as any);
+  if (session instanceof NextResponse) return session;
 
   try {
+    // Get authenticated user
+    if (!session?.user?.email) {
+      return createErrorResponse('User session not found', 401, ERROR_CODES.UNAUTHORIZED);
+    }
+    await dbConnect();
+    const UserModel = mongoose.model('User');
+    const user = await UserModel.findOne({ email: session.user.email });
+    if (!user) {
+      return createErrorResponse('User not found', 404, ERROR_CODES.NOT_FOUND);
+    }
+
     // Parse query parameters for pagination and filtering
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') || '1');
@@ -45,11 +57,10 @@ export async function GET(request: Request) {
     }
 
     // Cache miss - fetch from database with optimizations
-    await dbConnect();
     const Resume = mongoose.model('Resume');
 
-    // Build query with optional locale filter
-    const query: any = {};
+    // Build query with userId filter and optional locale filter
+    const query: any = { userId: user._id };
     if (locale) {
       query.locale = locale;
     }
@@ -97,14 +108,24 @@ export async function GET(request: Request) {
 
 export async function POST(req: Request) {
   // Check authentication
-  const authResult = await requireAuth(req as any);
-  if (authResult) return authResult;
+  const session = await requireAuth(req as any);
+  if (session instanceof NextResponse) return session;
 
-  await dbConnect();
-  const Resume = mongoose.model('Resume');
+  try {
+    // Get authenticated user
+    if (!session?.user?.email) {
+      return createErrorResponse('User session not found', 401, ERROR_CODES.UNAUTHORIZED);
+    }
+    await dbConnect();
+    const UserModel = mongoose.model('User');
+    const user = await UserModel.findOne({ email: session.user.email });
+    if (!user) {
+      return createErrorResponse('User not found', 404, ERROR_CODES.NOT_FOUND);
+    }
+
+    const Resume = mongoose.model('Resume');
     // Extract locale from request body, defaulting to en-US for backward compatibility
     // Locale determines the validation schema and field requirements
-  try {
     const body = await req.json();
   const { locale = 'en-US', ...resumeData } = body; // Extract locale, default to en-US
 
@@ -114,14 +135,14 @@ export async function POST(req: Request) {
     }
 
 
-    const validationErrors = validateResumeData(resumeData, selectedLocaleData);
+    const validationErrors = validateResumeModelData({ ...resumeData, locale });
 
     if (Object.keys(validationErrors).length > 0) {
       return handleValidationError(validationErrors);
     }
 
-    // Create the resume
-    const resume = await Resume.create({ ...resumeData, locale });
+    // Create the resume with user association
+    const resume = await Resume.create({ ...resumeData, locale, userId: user._id });
 
     // Invalidate related cache keys selectively when new resume is created
     // This ensures data consistency for the specific locale and 'all' locale caches
