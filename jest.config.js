@@ -18,6 +18,32 @@ const customJestConfig = {
     '^crypto-js$': '<rootDir>/tests/__mocks__/crypto-js.js',
   },
   testPathIgnorePatterns: ['<rootDir>/tests/e2e/'],
+  collectCoverageFrom: [
+    'frontend/**/*.{js,jsx,ts,tsx}',
+    'backend/**/*.{js,ts}',
+    'api/**/*.{js,ts}',
+    '!frontend/**/*.d.ts',
+    '!backend/**/*.d.ts',
+    '!api/**/*.d.ts',
+    '!**/node_modules/**',
+    '!**/coverage/**',
+    '!**/tests/**',
+    '!**/*.test.{js,ts,jsx,tsx}',
+    '!**/*.spec.{js,ts,jsx,tsx}',
+    '!**/*.config.{js,ts}',
+    '!**/jest.setup.js',
+  ],
+  coverageDirectory: 'coverage-unit',
+  coverageReporters: ['text', 'lcov', 'html'],
+  coverageThreshold: {
+    global: {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+      statements: 90,
+    },
+  },
+  testPathIgnorePatterns: ['<rootDir>/tests/e2e/'],
 };
 
 module.exports = createJestConfig(customJestConfig);

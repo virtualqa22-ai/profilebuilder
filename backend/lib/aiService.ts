@@ -9,11 +9,13 @@
  * Integrates with security, caching, and metrics modules for robust operation.
  */
 
+import axios from 'axios';
 import { sanitizePrompt, validateAIContent, trackAIPerformance, logAISecurityEvent } from './aiSecurity';
 import { getCacheManager } from './cacheManager';
 import { trackAiMetrics } from './metrics';
 import { globalLogger } from './logger';
 import { CircuitBreaker } from './circuitBreaker';
+import { RATE_LIMITING_SERVICE_URL, RATE_LIMITING_API_KEY } from './constants';
 
 /**
  * AI Service Configuration
@@ -24,6 +26,14 @@ interface AIServiceConfig {
   maxRetries: number;
   timeout: number;
   cacheTTL: number;
+}
+
+/**
+ * Rate Limit Result Interface
+ */
+interface RateLimitResult {
+  allowed: boolean;
+  retryAfter: number;
 }
 
 /**
@@ -38,87 +48,48 @@ const defaultConfig: AIServiceConfig = {
 };
 
 
-/**
- * Rate limiter for AI requests (10 req/min per user)
- */
-class RateLimiter {
-  private requests = new Map<string, number[]>();
-
-  /**
-   * Check if request is allowed for user
-   */
-  isAllowed(userId: string): boolean {
-    const now = Date.now();
-    const windowStart = now - 60000; // 1 minute window
-    const userRequests = this.requests.get(userId) || [];
-
-    // Remove old requests outside the window
-    const validRequests = userRequests.filter(time => time > windowStart);
-
-    if (validRequests.length >= 10) {
-      return false;
-    }
-
-    // Add current request
-    validRequests.push(now);
-    this.requests.set(userId, validRequests);
-
-    return true;
-  }
-
-  /**
-   * Clean up old entries periodically
-   */
-  cleanup() {
-    const now = Date.now();
-    const windowStart = now - 60000;
-
-    for (const [userId, requests] of this.requests.entries()) {
-      const validRequests = requests.filter(time => time > windowStart);
-      if (validRequests.length === 0) {
-        this.requests.delete(userId);
-      } else {
-        this.requests.set(userId, validRequests);
-      }
-    }
-  }
-}
 
 /**
  * AI Service class
+ *
+ * Provides AI-powered content processing with external microservice rate limiting,
+ * circuit breaker resilience, and comprehensive security measures.
  */
 export class AIService {
-  private config: AIServiceConfig;
-  private circuitBreaker: CircuitBreaker;
-  private rateLimiter: RateLimiter;
-  private cacheManager = getCacheManager();
+   private config: AIServiceConfig;
+   private circuitBreaker: CircuitBreaker;
+   private cacheManager = getCacheManager();
 
   constructor(config: Partial<AIServiceConfig> = {}) {
     this.config = { ...defaultConfig, ...config };
     this.circuitBreaker = new CircuitBreaker();
-    this.rateLimiter = new RateLimiter();
-
-    // Clean up rate limiter every 5 minutes
-    setInterval(() => this.rateLimiter.cleanup(), 300000);
   }
 
   /**
-   * Rewrite content using AI
+   * Rewrite content using AI with external microservice rate limiting
+   *
+   * @param content The content to rewrite
+   * @param style Optional style for rewriting
+   * @param userId Optional user identifier for rate limiting
+   * @returns Promise resolving to rewritten content
    */
   async rewriteContent(content: string, style?: string, userId?: string): Promise<string> {
     const startTime = Date.now();
 
     try {
-      // Rate limiting check
-      if (userId && !this.rateLimiter.isAllowed(userId)) {
-        logAISecurityEvent({
-          type: 'rate_limit',
-          severity: 'medium',
-          details: 'Rate limit exceeded for AI rewrite',
-          userId,
-          timestamp: new Date(),
-        });
-        throw new Error('Rate limit exceeded. Please try again later.');
+      // External microservice rate limiting check
+      if (userId) {
+        const rateLimitResult = await this.checkRateLimit(userId, 'ai-rewrite');
+        if (!rateLimitResult.allowed) {
+          logAISecurityEvent({
+            type: 'rate_limit',
+            severity: 'medium',
+            details: `Rate limit exceeded for AI rewrite. Retry after ${rateLimitResult.retryAfter} seconds.`,
+            userId,
+            timestamp: new Date(),
+          });
+          throw new Error(`Rate limit exceeded. Retry after ${rateLimitResult.retryAfter} seconds.`);
+        }
       }
 
       // Check cache first
@@ -171,7 +142,11 @@ export class AIService {
   }
 
   /**
-   * Get grammar and style suggestions
+   * Get grammar and style suggestions with external microservice rate limiting
+   *
+   * @param content The content to analyze
+   * @param userId Optional user identifier for rate limiting
+   * @returns Promise resolving to suggestions object
    */
   async getSuggestions(content: string, userId?: string): Promise<{
     grammar: string[];
@@ -181,21 +156,28 @@ export class AIService {
     const startTime = Date.now();
 
     try {
-      // Rate limiting check
-      if (userId && !this.rateLimiter.isAllowed(userId)) {
-        logAISecurityEvent({
-          type: 'rate_limit',
-          severity: 'medium',
-          details: 'Rate limit exceeded for AI suggestions',
-          userId,
-          timestamp: new Date(),
-        });
-        throw new Error('Rate limit exceeded. Please try again later.');
+      // External microservice rate limiting check
+      if (userId) {
+        const rateLimitResult = await this.checkRateLimit(userId, 'ai-suggestions');
+        if (!rateLimitResult.allowed) {
+          logAISecurityEvent({
+            type: 'rate_limit',
+            severity: 'medium',
+            details: `Rate limit exceeded for AI suggestions. Retry after ${rateLimitResult.retryAfter} seconds.`,
+            userId,
+            timestamp: new Date(),
+          });
+          throw new Error(`Rate limit exceeded. Retry after ${rateLimitResult.retryAfter} seconds.`);
+        }
       }
 
       // Check cache
       const cacheKey = `ai:suggestions:${this.hashContent(content)}`;
-      const cached = await this.cacheManager.get(cacheKey);
+      const cached = await this.cacheManager.get<{
+        grammar: string[];
+        style: string[];
+        suggestions: string[];
+      }>(cacheKey);
       if (cached) {
         trackAiMetrics('suggestions', this.config.model, Date.now() - startTime);
         return cached;
@@ -233,7 +215,12 @@ export class AIService {
   }
 
   /**
-   * Detect linting issues in content
+   * Detect linting issues in content with external microservice rate limiting
+   *
+   * @param content The content to lint
+   * @param language The language of the content
+   * @param userId Optional user identifier for rate limiting
+   * @returns Promise resolving to lint results
    */
   async detectLintIssues(content: string, language: string = 'text', userId?: string): Promise<{
     issues: Array<{
@@ -248,21 +235,33 @@ export class AIService {
     const startTime = Date.now();
 
     try {
-      // Rate limiting check
-      if (userId && !this.rateLimiter.isAllowed(userId)) {
-        logAISecurityEvent({
-          type: 'rate_limit',
-          severity: 'medium',
-          details: 'Rate limit exceeded for AI lint',
-          userId,
-          timestamp: new Date(),
-        });
-        throw new Error('Rate limit exceeded. Please try again later.');
+      // External microservice rate limiting check
+      if (userId) {
+        const rateLimitResult = await this.checkRateLimit(userId, 'ai-lint');
+        if (!rateLimitResult.allowed) {
+          logAISecurityEvent({
+            type: 'rate_limit',
+            severity: 'medium',
+            details: `Rate limit exceeded for AI lint. Retry after ${rateLimitResult.retryAfter} seconds.`,
+            userId,
+            timestamp: new Date(),
+          });
+          throw new Error(`Rate limit exceeded. Retry after ${rateLimitResult.retryAfter} seconds.`);
+        }
       }
 
       // Check cache
       const cacheKey = `ai:lint:${this.hashContent(content)}:${language}`;
-      const cached = await this.cacheManager.get(cacheKey);
+      const cached = await this.cacheManager.get<{
+        issues: Array<{
+          type: string;
+          message: string;
+          line?: number;
+          column?: number;
+          severity: 'error' | 'warning' | 'info';
+        }>;
+        score: number;
+      }>(cacheKey);
       if (cached) {
         trackAiMetrics('lint', this.config.model, Date.now() - startTime);
         return cached;
@@ -447,13 +446,59 @@ Response:`;
   }
 
   /**
-   * Get service health status
+   * Check rate limit via dedicated rate limiting microservice
+   *
+   * @param userId User identifier for rate limiting
+   * @param action Action being performed (e.g., 'ai-rewrite', 'ai-suggestions')
+   * @returns Promise resolving to rate limit result
+   */
+  private async checkRateLimit(userId: string, action: string): Promise<RateLimitResult> {
+    try {
+      const response = await axios.post(
+        `${RATE_LIMITING_SERVICE_URL}/api/v1/rate-limit/check`,
+        {
+          userId,
+          action,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': RATE_LIMITING_API_KEY,
+          },
+          timeout: 5000, // 5 second timeout for rate limiting service
+        }
+      );
+
+      return response.data as RateLimitResult;
+    } catch (error) {
+      // Log the error and default to allowing the request to prevent blocking users
+      globalLogger.error('Rate limiting service error:', error);
+      logAISecurityEvent({
+        type: 'rate_limit',
+        severity: 'high',
+        details: `Failed to check rate limit for user ${userId}, action ${action}: ${error.message}`,
+        userId,
+        timestamp: new Date(),
+      });
+      // Default to allowing the request if rate limiting service is down
+      return { allowed: true, retryAfter: 0 };
+    }
+  }
+
+  /**
+   * Get comprehensive service health status
+   *
+   * @returns Health status object with circuit breaker and cache info
    */
   getHealthStatus() {
     return {
       circuitBreakerState: this.circuitBreaker.getState(),
       cacheHealthy: true, // Cache manager handles its own health
-      rateLimiterActive: true,
+      rateLimitingService: {
+        type: 'external',
+        url: RATE_LIMITING_SERVICE_URL,
+        configured: !!RATE_LIMITING_API_KEY,
+      },
     };
   }
 }

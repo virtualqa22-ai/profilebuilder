@@ -36,6 +36,12 @@ jest.mock('../../../backend/lib/logger', () => ({
   },
 }));
 
+// Mock axios for rate limiting
+jest.mock('axios', () => ({
+  post: jest.fn(),
+  create: jest.fn(() => ({ post: jest.fn() })),
+}));
+
 // Mock fetch for OpenAI API calls
 global.fetch = jest.fn();
 
@@ -48,6 +54,7 @@ describe('AIService', () => {
   let mockLogAISecurityEvent: any;
   let mockTrackAiMetrics: any;
   let mockGlobalLogger: any;
+  let mockAxios: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -60,12 +67,14 @@ describe('AIService', () => {
     mockLogAISecurityEvent = require('../../../backend/lib/aiSecurity').logAISecurityEvent;
     mockTrackAiMetrics = require('../../../backend/lib/metrics').trackAiMetrics;
     mockGlobalLogger = require('../../../backend/lib/logger').globalLogger;
+    mockAxios = require('axios');
 
     // Setup default mocks
     mockSanitizePrompt.mockReturnValue('sanitized content');
     mockValidateAIContent.mockReturnValue({ safe: true, issues: [] });
     mockCacheManager.get.mockResolvedValue(null); // No cache hit by default
     mockCacheManager.set.mockResolvedValue(undefined);
+    mockAxios.post.mockResolvedValue({ data: { allowed: true, retryAfter: 0 } });
 
     // Mock successful OpenAI response
     (global.fetch as jest.Mock).mockResolvedValue({
@@ -416,31 +425,187 @@ describe('AIService', () => {
     });
   });
 
-  describe('Rate Limiter', () => {
-    it('should allow requests within limit', async () => {
-      const promises = Array(10).fill(null).map(() =>
-        aiService.rewriteContent('test', undefined, 'user123')
-      );
+  describe('Rate Limiting Integration', () => {
+    it('should handle rate limiting service success', async () => {
+      mockAxios.post.mockResolvedValue({
+        data: { allowed: true, retryAfter: 0 }
+      });
 
-      // All should succeed (mocked)
-      await Promise.all(promises);
-      expect(mockLogAISecurityEvent).not.toHaveBeenCalledWith(expect.objectContaining({
+      const result = await aiService.rewriteContent('test content', undefined, 'user123');
+      expect(result).toBe('AI response content');
+      expect(mockAxios.post).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/rate-limit/check'),
+        { userId: 'user123', action: 'ai-rewrite' },
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-API-Key': expect.any(String)
+          })
+        })
+      );
+    });
+
+    it('should handle rate limiting service rejection', async () => {
+      mockAxios.post.mockResolvedValue({
+        data: { allowed: false, retryAfter: 60 }
+      });
+
+      await expect(aiService.rewriteContent('test content', undefined, 'user123'))
+        .rejects.toThrow('Rate limit exceeded. Retry after 60 seconds.');
+
+      expect(mockLogAISecurityEvent).toHaveBeenCalledWith(expect.objectContaining({
         type: 'rate_limit',
+        severity: 'medium',
+        userId: 'user123'
       }));
     });
 
-    it('should cleanup old requests', () => {
-      const rateLimiter = (aiService as any).rateLimiter;
+    it('should handle rate limiting service network error', async () => {
+      mockAxios.post.mockRejectedValue(new Error('Network error'));
 
-      // Simulate requests over time
-      jest.useFakeTimers();
-      rateLimiter.isAllowed('user1'); // t=0
-      jest.advanceTimersByTime(30000);
-      rateLimiter.isAllowed('user1'); // t=30s
-      jest.advanceTimersByTime(31000); // t=61s
+      // Should still allow the request when rate limiting service is down
+      const result = await aiService.rewriteContent('test content', undefined, 'user123');
+      expect(result).toBe('AI response content');
 
-      rateLimiter.cleanup();
-      // Should have cleaned up old requests
+      expect(mockGlobalLogger.error).toHaveBeenCalledWith('Rate limiting service error:', expect.any(Error));
+      expect(mockLogAISecurityEvent).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'rate_limit',
+        severity: 'high',
+        userId: 'user123'
+      }));
+    });
+
+    it('should skip rate limiting when no userId provided', async () => {
+      const result = await aiService.rewriteContent('test content');
+      expect(result).toBe('AI response content');
+      expect(mockAxios.post).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Error Handling Edge Cases', () => {
+    it('should handle getSuggestions rate limiting', async () => {
+      mockAxios.post.mockResolvedValue({
+        data: { allowed: false, retryAfter: 30 }
+      });
+
+      await expect(aiService.getSuggestions('test content', 'user123'))
+        .rejects.toThrow('Rate limit exceeded. Retry after 30 seconds.');
+    });
+
+    it('should handle detectLintIssues rate limiting', async () => {
+      mockAxios.post.mockResolvedValue({
+        data: { allowed: false, retryAfter: 45 }
+      });
+
+      await expect(aiService.detectLintIssues('test code', 'javascript', 'user123'))
+        .rejects.toThrow('Rate limit exceeded. Retry after 45 seconds.');
+    });
+
+    it('should handle getSuggestions cache hit', async () => {
+      const cachedResult = {
+        grammar: ['cached'],
+        style: ['cached'],
+        suggestions: ['cached']
+      };
+      mockCacheManager.get.mockResolvedValue(cachedResult);
+
+      const result = await aiService.getSuggestions('test content');
+      expect(result).toBe(cachedResult);
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(mockTrackAiMetrics).toHaveBeenCalledWith('suggestions', 'gpt-3.5-turbo', expect.any(Number));
+    });
+
+    it('should handle detectLintIssues cache hit', async () => {
+      const cachedResult = {
+        issues: [{ type: 'error', message: 'cached', severity: 'error' }],
+        score: 90
+      };
+      mockCacheManager.get.mockResolvedValue(cachedResult);
+
+      const result = await aiService.detectLintIssues('test code');
+      expect(result).toBe(cachedResult);
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(mockTrackAiMetrics).toHaveBeenCalledWith('lint', 'gpt-3.5-turbo', expect.any(Number));
+    });
+
+    it('should handle getSuggestions unsafe content', async () => {
+      mockSanitizePrompt.mockReturnValue(null);
+
+      await expect(aiService.getSuggestions('unsafe content')).rejects.toThrow('Content contains unsafe content');
+    });
+
+    it('should handle detectLintIssues unsafe content', async () => {
+      mockSanitizePrompt.mockReturnValue(null);
+
+      await expect(aiService.detectLintIssues('unsafe code')).rejects.toThrow('Content contains unsafe content');
+    });
+
+    it('should handle getSuggestions AI validation failure', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          choices: [{ message: { content: '{"grammar": [], "style": [], "suggestions": []}' } }],
+        }),
+      });
+      mockValidateAIContent.mockReturnValue({ safe: false, issues: ['unsafe'] });
+
+      await expect(aiService.getSuggestions('test content')).rejects.toThrow('Generated content failed safety validation');
+    });
+
+    it('should handle detectLintIssues AI validation failure', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          choices: [{ message: { content: '{"issues": [], "score": 100}' } }],
+        }),
+      });
+      mockValidateAIContent.mockReturnValue({ safe: false, issues: ['unsafe'] });
+
+      await expect(aiService.detectLintIssues('test code')).rejects.toThrow('Generated content failed safety validation');
+    });
+  });
+
+  describe('Performance and Metrics', () => {
+    it('should track performance on rewrite success', async () => {
+      await aiService.rewriteContent('test content');
+
+      expect(mockTrackAIPerformance).toHaveBeenCalledWith('rewrite', 'gpt-3.5-turbo', expect.any(Number), true);
+    });
+
+    it('should track performance on rewrite failure', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 500,
+      });
+
+      await expect(aiService.rewriteContent('test content')).rejects.toThrow();
+
+      expect(mockTrackAIPerformance).toHaveBeenCalledWith('rewrite', 'gpt-3.5-turbo', expect.any(Number), false);
+    });
+
+    it('should track performance on suggestions success', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          choices: [{ message: { content: '{"grammar": [], "style": [], "suggestions": []}' } }],
+        }),
+      });
+
+      await aiService.getSuggestions('test content');
+
+      expect(mockTrackAIPerformance).toHaveBeenCalledWith('suggestions', 'gpt-3.5-turbo', expect.any(Number), true);
+    });
+
+    it('should track performance on lint success', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          choices: [{ message: { content: '{"issues": [], "score": 100}' } }],
+        }),
+      });
+
+      await aiService.detectLintIssues('test code');
+
+      expect(mockTrackAIPerformance).toHaveBeenCalledWith('lint', 'gpt-3.5-turbo', expect.any(Number), true);
     });
   });
 
@@ -477,7 +642,10 @@ describe('AIService', () => {
 
       expect(health).toHaveProperty('circuitBreakerState');
       expect(health).toHaveProperty('cacheHealthy');
-      expect(health).toHaveProperty('rateLimiterActive');
+      expect(health).toHaveProperty('rateLimitingService');
+      expect(health.rateLimitingService).toHaveProperty('type', 'external');
+      expect(health.rateLimitingService).toHaveProperty('url');
+      expect(health.rateLimitingService).toHaveProperty('configured');
     });
   });
 });

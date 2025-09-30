@@ -1,0 +1,21 @@
+module.exports = {
+  testEnvironment: 'node',
+  testMatch: ['<rootDir>/tests/**/*.test.js'],
+  collectCoverageFrom: [
+    'src/**/*.{js,ts}',
+    '!src/**/*.d.ts',
+    '!**/node_modules/**',
+    '!**/coverage/**',
+    '!**/tests/**',
+  ],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html'],
+  coverageThreshold: {
+    global: {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+      statements: 90,
+    },
+  },
+};

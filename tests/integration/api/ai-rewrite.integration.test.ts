@@ -213,6 +213,76 @@ describe('AI Rewrite API Integration Tests', () => {
 
       expect(mockRewriteContent).toHaveBeenCalledWith(maxContent, undefined, undefined);
     });
+    it('should reject requests with invalid userId type', async () => {
+      const response = await request(server)
+        .post('/api/v1/ai/rewrite')
+        .send({ content: 'test', userId: 12345 })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('userId must be a string');
+    });
+
+    it('should reject requests with content as null', async () => {
+      const response = await request(server)
+        .post('/api/v1/ai/rewrite')
+        .send({ content: null })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('Content is required and must be a string');
+    });
+
+    it('should reject requests with content as array', async () => {
+      const response = await request(server)
+        .post('/api/v1/ai/rewrite')
+        .send({ content: ['test'] })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('Content is required and must be a string');
+    });
+
+    it('should reject requests with content as object', async () => {
+      const response = await request(server)
+        .post('/api/v1/ai/rewrite')
+        .send({ content: { text: 'test' } })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('Content is required and must be a string');
+    });
+
+    it('should handle whitespace-only content', async () => {
+      const response = await request(server)
+        .post('/api/v1/ai/rewrite')
+        .send({ content: '   \n\t  ' })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(mockRewriteContent).toHaveBeenCalledWith('   \n\t  ', undefined, undefined);
+    });
+
+    it('should handle invalid JSON in request body', async () => {
+      // Send invalid JSON directly
+      const response = await request(server)
+        .post('/api/v1/ai/rewrite')
+        .set('Content-Type', 'application/json')
+        .send('invalid json {')
+        .expect(500);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('An error occurred while processing your request');
+    });
+
+    it('should reject GET requests', async () => {
+      const response = await request(server)
+        .get('/api/v1/ai/rewrite')
+        .expect(404);
+
+      expect(response.body.error).toContain('Not found');
+    });
+  });
   });
 
   describe('Error Handling', () => {
@@ -273,6 +343,17 @@ describe('AI Rewrite API Integration Tests', () => {
         .expect(500);
 
       expect(response.body.success).toBe(false);
+    it('should handle OpenAI API errors', async () => {
+      mockRewriteContent.mockRejectedValue(new Error('OpenAI API error: Service unavailable'));
+
+      const response = await request(server)
+        .post('/api/v1/ai/rewrite')
+        .send({ content: 'test' })
+        .expect(502);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('AI service temporarily unavailable');
+    });
     });
   });
 

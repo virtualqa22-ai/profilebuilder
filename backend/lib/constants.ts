@@ -171,6 +171,10 @@ ${data.signature}
 export const DEFAULT_PAGE_SIZE = 10;
 export const MAX_PAGE_SIZE = 100;
 
+// Rate Limiting Service Constants
+export const RATE_LIMITING_SERVICE_URL = process.env.RATE_LIMITING_SERVICE_URL || 'http://rate-limiting-service:3004';
+export const RATE_LIMITING_API_KEY = process.env.RATE_LIMITING_API_KEY || '';
+
 // Time Constants
 export const AUTOSAVE_DELAY = 1000; // 1 second
 export const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours in milliseconds

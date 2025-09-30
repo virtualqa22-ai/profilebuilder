@@ -25,7 +25,6 @@ if (!NEXTAUTH_URL) {
     'Please define the NEXTAUTH_URL environment variable inside .env.local'
   );
 }
-import CredentialsProvider from 'next-auth/providers/credentials';
 
 /**
  * NextAuth configuration options
@@ -48,40 +47,6 @@ export const authOptions = {
     LinkedInProvider({
       clientId: process.env.LINKEDIN_CLIENT_ID as string,
       clientSecret: process.env.LINKEDIN_CLIENT_SECRET as string,
-    }),
-    /**
-     * Credentials provider for email/password authentication
-     * Uses secure password hashing and database lookup
-     * Note: Implement proper password hashing (e.g., bcrypt) in production
-     */
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "text", placeholder: "user@example.com" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials, req) {
-        // Validate input
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
-
-        try {
-          // TODO: Replace with actual database lookup
-          // Example implementation:
-          // const user = await User.findOne({ email: credentials.email });
-          // if (user && await bcrypt.compare(credentials.password, user.passwordHash)) {
-          //   return { id: user._id.toString(), name: user.name, email: user.email };
-          // }
-
-          // Placeholder - remove in production
-          console.warn('Credentials provider is using placeholder authentication. Implement proper user lookup.');
-          return null;
-        } catch (error) {
-          console.error('Authentication error:', error);
-          return null;
-        }
-      },
     }),
   ],
   /**

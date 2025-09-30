@@ -360,7 +360,8 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ locale }) => {
         resume.education.forEach((_, index) => removeEducation(index));
         data.education.forEach((edu: any) => addEducation(edu));
         updateSkills(data.skills);
-        // TODO: Update other sections
+        updateProjects(data.projects);
+        updateAwardsCertifications(data.awardsCertifications);
         setMessage('Resume imported successfully!');
       } else {
         const errorData = await response.json();

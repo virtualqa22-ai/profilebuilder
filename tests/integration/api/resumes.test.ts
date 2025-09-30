@@ -1,389 +1,580 @@
+/**
+ * Integration Tests for Resume API Routes
+ *
+ * Tests resume CRUD operations, authentication, validation, and caching.
+ */
+
 /// <reference types="jest" />
-import request from 'supertest';
-import { createServer } from 'http';
 
-// Mock the Next.js app
-const mockApp = {
-  prepare: jest.fn(() => Promise.resolve()),
-  getRequestHandler: jest.fn(() => (req: any, res: any) => {
-    // Mock request handler for testing
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ success: true, message: 'Mock response' }));
-  }),
-};
+import { NextRequest } from 'next/server';
+import { GET, POST } from '../../../api/resumes/route';
+import { GET as GET_BY_ID, PUT, DELETE as DELETE_BY_ID } from '../../../api/resumes/[id]/route';
 
-// Mock next
-jest.mock('next', () => jest.fn(() => mockApp));
+// Mock all dependencies
+jest.mock('../../../backend/dbConnect');
+jest.mock('../../../backend/models/Resume');
+jest.mock('next-auth');
+jest.mock('../../../backend/lib/localeService');
+jest.mock('../../../backend/lib/validations');
+jest.mock('../../../backend/lib/messages');
+jest.mock('../../../backend/lib/constants');
+jest.mock('../../../backend/lib/errorHandler');
+jest.mock('../../../backend/lib/cacheManager');
+jest.mock('../../../backend/lib/auth');
 
-describe('Resumes API Integration Tests', () => {
-  let server: any;
-  let app: any;
-  let handle: any;
+describe('Resume API Routes', () => {
+  let mockDbConnect: jest.Mock;
+  let mockResumeModel: any;
+  let mockUserModel: any;
+  let mockRequireAuth: jest.Mock;
+  let mockGetLocaleByCode: jest.Mock;
+  let mockValidateResumeModelData: jest.Mock;
+  let mockGetCacheManager: jest.Mock;
+  let mockCacheManager: any;
+  let mockApplySecurityHeaders: jest.Mock;
+  let mockCreateErrorResponse: jest.Mock;
+  let mockHandleDatabaseError: jest.Mock;
+  let mockHandleValidationError: jest.Mock;
 
-  beforeAll(async () => {
-    app = require('next')();
-    handle = app.getRequestHandler();
-    await app.prepare();
-    server = createServer((req, res) => handle(req, res)).listen(4001);
-  });
+  beforeEach(() => {
+    jest.clearAllMocks();
 
-  afterAll(() => {
-    server.close();
-  });
+    // Get all mocks
+    mockDbConnect = require('../../../backend/dbConnect');
+    mockResumeModel = require('../../../backend/models/Resume').default;
+    mockUserModel = mongoose.model('User');
+    mockRequireAuth = require('../../../backend/lib/auth').requireAuth;
+    mockGetLocaleByCode = require('../../../backend/lib/localeService').getLocaleByCode;
+    mockValidateResumeModelData = require('../../../backend/lib/validations').validateResumeModelData;
+    mockGetCacheManager = require('../../../backend/lib/cacheManager').getCacheManager;
+    mockCacheManager = {
+      get: jest.fn(),
+      set: jest.fn(),
+      invalidatePattern: jest.fn(),
+      delete: jest.fn(),
+    };
+    mockGetCacheManager.mockReturnValue(mockCacheManager);
+    mockApplySecurityHeaders = require('../../../backend/lib/errorHandler').applySecurityHeaders;
+    mockCreateErrorResponse = require('../../../backend/lib/errorHandler').createErrorResponse;
+    mockHandleDatabaseError = require('../../../backend/lib/errorHandler').handleDatabaseError;
+    mockHandleValidationError = require('../../../backend/lib/errorHandler').handleValidationError;
 
-  describe('GET /api/resumes', () => {
-    it('should return list of resumes', async () => {
-      const response = await request(server)
-        .get('/api/resumes')
-        .expect(200);
+    // Setup default mocks
+    mockDbConnect.mockResolvedValue(undefined);
+    mockRequireAuth.mockResolvedValue({ user: { email: 'test@example.com' } });
+    mockGetLocaleByCode.mockReturnValue({ code: 'en-US', name: 'English (US)' });
+    mockValidateResumeModelData.mockReturnValue({});
+    mockApplySecurityHeaders.mockImplementation((res) => res);
+    mockCreateErrorResponse.mockReturnValue(new Response('Error', { status: 400 }));
+    mockHandleDatabaseError.mockImplementation((error) => new Response('DB Error', { status: 500 }));
+    mockHandleValidationError.mockImplementation((errors) => new Response('Validation Error', { status: 400 }));
 
-      expect(response.body).toHaveProperty('success', true);
+    // Mock mongoose models
+    const mongoose = require('mongoose');
+    mockUserModel = {
+      findOne: jest.fn(),
+    };
+    mongoose.model = jest.fn((name) => {
+      if (name === 'User') return mockUserModel;
+      if (name === 'Resume') return mockResumeModel;
+      return {};
     });
 
-    it('should handle query parameters', async () => {
-      const response = await request(server)
-        .get('/api/resumes?page=1&limit=10')
-        .expect(200);
+    // Mock Resume model
+    mockResumeModel.create = jest.fn();
+    mockResumeModel.find = jest.fn();
+    mockResumeModel.findById = jest.fn();
+    mockResumeModel.findByIdAndUpdate = jest.fn();
+    mockResumeModel.findOneAndUpdate = jest.fn();
+    mockResumeModel.deleteOne = jest.fn();
+    mockResumeModel.countDocuments = jest.fn();
+  });
 
-      expect(response.body).toHaveProperty('success', true);
+  describe('GET /api/resumes (List Resumes)', () => {
+    it('should return paginated resumes for authenticated user', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
+      const mockResumes = [
+        { _id: 'resume1', title: 'Resume 1', content: 'Content 1', locale: 'en-US', userId: 'user123' },
+        { _id: 'resume2', title: 'Resume 2', content: 'Content 2', locale: 'en-US', userId: 'user123' },
+      ];
+
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockCacheManager.get.mockResolvedValue(null); // Cache miss
+      mockResumeModel.find.mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          skip: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue(mockResumes),
+          }),
+        }),
+      });
+      mockResumeModel.countDocuments.mockResolvedValue(2);
+
+      const request = new NextRequest('http://localhost:3000/api/resumes?page=1&limit=10');
+      const response = await GET(request);
+
+      expect(mockRequireAuth).toHaveBeenCalledWith(request);
+      expect(mockUserModel.findOne).toHaveBeenCalledWith({ email: 'test@example.com' });
+      expect(mockResumeModel.find).toHaveBeenCalledWith({ userId: mockUser._id });
+      expect(mockCacheManager.set).toHaveBeenCalled();
+      expect(response.status).toBe(200);
     });
 
-    it('should handle invalid query parameters gracefully', async () => {
-      const response = await request(server)
-        .get('/api/resumes?page=invalid&limit=invalid')
-        .expect(200);
+    it('should return cached results when available', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
+      const cachedResult = {
+        success: true,
+        data: [{ _id: 'resume1', title: 'Resume 1' }],
+        pagination: { page: 1, total: 1, pages: 1 },
+      };
 
-      // Should still return success or handle gracefully
-      expect(response.body).toBeDefined();
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockCacheManager.get.mockResolvedValue(cachedResult);
+
+      const request = new NextRequest('http://localhost:3000/api/resumes');
+      const response = await GET(request);
+
+      expect(mockResumeModel.find).not.toHaveBeenCalled();
+      expect(mockCacheManager.get).toHaveBeenCalled();
+      expect(response.status).toBe(200);
+    });
+
+    it('should filter by locale', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
+      const mockResumes = [{ _id: 'resume1', title: 'Resume 1', locale: 'en-GB', userId: 'user123' }];
+
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockCacheManager.get.mockResolvedValue(null);
+      mockResumeModel.find.mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          skip: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue(mockResumes),
+          }),
+        }),
+      });
+      mockResumeModel.countDocuments.mockResolvedValue(1);
+
+      const request = new NextRequest('http://localhost:3000/api/resumes?locale=en-GB');
+      const response = await GET(request);
+
+      expect(mockResumeModel.find).toHaveBeenCalledWith({ userId: mockUser._id, locale: 'en-GB' });
+      expect(response.status).toBe(200);
+    });
+
+    it('should exclude content fields when includeContent=false', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
+      const mockResumes = [{ _id: 'resume1', title: 'Resume 1', userId: 'user123' }];
+
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockCacheManager.get.mockResolvedValue(null);
+      mockResumeModel.find.mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          skip: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue(mockResumes),
+          }),
+        }),
+      });
+      mockResumeModel.countDocuments.mockResolvedValue(1);
+
+      const request = new NextRequest('http://localhost:3000/api/resumes?includeContent=false');
+      const response = await GET(request);
+
+      expect(mockResumeModel.find).toHaveBeenCalledWith(
+        { userId: mockUser._id },
+        { content: 0, photos: 0, certifications: 0, hobbies: 0, references: 0 }
+      );
+    });
+
+    it('should handle pagination parameters', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
+      const mockResumes = [{ _id: 'resume1', title: 'Resume 1', userId: 'user123' }];
+
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockCacheManager.get.mockResolvedValue(null);
+      const mockQuery = {
+        sort: jest.fn().mockReturnValue({
+          skip: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue(mockResumes),
+          }),
+        }),
+      };
+      mockResumeModel.find.mockReturnValue(mockQuery);
+      mockResumeModel.countDocuments.mockResolvedValue(25);
+
+      const request = new NextRequest('http://localhost:3000/api/resumes?page=2&limit=10&sortBy=updatedAt&sortOrder=desc');
+      const response = await GET(request);
+
+      expect(mockQuery.sort).toHaveBeenCalledWith({ updatedAt: -1 });
+      expect(mockQuery.skip).toHaveBeenCalledWith(10);
+      expect(mockQuery.limit).toHaveBeenCalledWith(10);
+      expect(response.status).toBe(200);
+    });
+
+    it('should handle unauthenticated requests', async () => {
+      mockRequireAuth.mockResolvedValue(new Response('Unauthorized', { status: 401 }));
+
+      const request = new NextRequest('http://localhost:3000/api/resumes');
+      const response = await GET(request);
+
+      expect(response.status).toBe(401);
+    });
+
+    it('should handle user not found', async () => {
+      mockUserModel.findOne.mockResolvedValue(null);
+
+      const request = new NextRequest('http://localhost:3000/api/resumes');
+      const response = await GET(request);
+
+      expect(mockCreateErrorResponse).toHaveBeenCalledWith('User not found', 404, expect.any(String));
+    });
+
+    it('should handle database errors', async () => {
+      mockUserModel.findOne.mockRejectedValue(new Error('Database error'));
+
+      const request = new NextRequest('http://localhost:3000/api/resumes');
+      const response = await GET(request);
+
+      expect(mockHandleDatabaseError).toHaveBeenCalled();
     });
   });
 
-  describe('POST /api/resumes', () => {
-    it('should create a new resume with valid data', async () => {
+  describe('POST /api/resumes (Create Resume)', () => {
+    it('should create a new resume successfully', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
       const resumeData = {
-        title: 'Test Resume',
-        content: 'Resume content here',
+        title: 'New Resume',
+        content: 'Resume content',
         locale: 'en-US',
       };
+      const createdResume = { ...resumeData, _id: 'new123', userId: 'user123', version: 1 };
 
-      const response = await request(server)
-        .post('/api/resumes')
-        .send(resumeData)
-        .set('Content-Type', 'application/json')
-        .expect(200);
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockResumeModel.create.mockResolvedValue(createdResume);
 
-      expect(response.body).toHaveProperty('success', true);
+      const request = new NextRequest('http://localhost:3000/api/resumes', {
+        method: 'POST',
+        body: JSON.stringify(resumeData),
+      });
+      const response = await POST(request);
+
+      expect(mockValidateResumeModelData).toHaveBeenCalledWith({ ...resumeData, locale: 'en-US' });
+      expect(mockResumeModel.create).toHaveBeenCalledWith({ ...resumeData, locale: 'en-US', userId: mockUser._id });
+      expect(mockCacheManager.invalidatePattern).toHaveBeenCalled();
+      expect(response.status).toBe(201);
     });
 
-    it('should reject invalid resume data', async () => {
-      const invalidData = {
-        title: '', // Empty title
-        content: 'Content',
-        locale: 'en-US',
-      };
-
-      const response = await request(server)
-        .post('/api/resumes')
-        .send(invalidData)
-        .set('Content-Type', 'application/json')
-        .expect(400);
-
-      expect(response.body).toHaveProperty('success', false);
-    });
-
-    it('should handle missing required fields', async () => {
-      const incompleteData = {
-        title: 'Test Resume',
-        // Missing content and locale
-      };
-
-      const response = await request(server)
-        .post('/api/resumes')
-        .send(incompleteData)
-        .set('Content-Type', 'application/json')
-        .expect(400);
-
-      expect(response.body).toHaveProperty('success', false);
-    });
-
-    it('should handle large content payloads', async () => {
-      const largeContent = 'A'.repeat(10000); // 10KB of content
+    it('should use default locale when not provided', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
       const resumeData = {
-        title: 'Large Resume',
-        content: largeContent,
-        locale: 'en-US',
+        title: 'New Resume',
+        content: 'Resume content',
+      };
+      const createdResume = { ...resumeData, locale: 'en-US', _id: 'new123', userId: 'user123', version: 1 };
+
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockResumeModel.create.mockResolvedValue(createdResume);
+
+      const request = new NextRequest('http://localhost:3000/api/resumes', {
+        method: 'POST',
+        body: JSON.stringify(resumeData),
+      });
+      const response = await POST(request);
+
+      expect(mockResumeModel.create).toHaveBeenCalledWith({ ...resumeData, locale: 'en-US', userId: mockUser._id });
+      expect(response.status).toBe(201);
+    });
+
+    it('should handle validation errors', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
+      const validationErrors = { title: 'Title is required' };
+
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockValidateResumeModelData.mockReturnValue(validationErrors);
+
+      const request = new NextRequest('http://localhost:3000/api/resumes', {
+        method: 'POST',
+        body: JSON.stringify({ content: 'Content only' }),
+      });
+      const response = await POST(request);
+
+      expect(mockHandleValidationError).toHaveBeenCalledWith(validationErrors);
+    });
+
+    it('should handle invalid locale', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
+
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockGetLocaleByCode.mockReturnValue(null);
+
+      const request = new NextRequest('http://localhost:3000/api/resumes', {
+        method: 'POST',
+        body: JSON.stringify({ title: 'Test', content: 'Content', locale: 'invalid' }),
+      });
+      const response = await POST(request);
+
+      expect(mockCreateErrorResponse).toHaveBeenCalledWith('Invalid locale provided', 400, expect.any(String));
+    });
+
+    it('should handle unauthenticated requests', async () => {
+      mockRequireAuth.mockResolvedValue(new Response('Unauthorized', { status: 401 }));
+
+      const request = new NextRequest('http://localhost:3000/api/resumes', {
+        method: 'POST',
+        body: JSON.stringify({ title: 'Test', content: 'Content' }),
+      });
+      const response = await POST(request);
+
+      expect(response.status).toBe(401);
+    });
+  });
+
+  describe('GET /api/resumes/[id] (Get Resume by ID)', () => {
+    it('should return resume when found and user owns it', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
+      const mockResume = {
+        _id: 'resume123',
+        title: 'Test Resume',
+        content: 'Resume content',
+        userId: 'user123',
+        toObject: () => mockResume,
       };
 
-      const response = await request(server)
-        .post('/api/resumes')
-        .send(resumeData)
-        .set('Content-Type', 'application/json')
-        .expect(200);
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockResumeModel.findById.mockResolvedValue(mockResume);
 
-      expect(response.body).toHaveProperty('success', true);
+      const request = new NextRequest('http://localhost:3000/api/resumes/resume123');
+      const response = await GET_BY_ID(request, { params: { id: 'resume123' } });
+
+      expect(mockResumeModel.findById).toHaveBeenCalledWith('resume123');
+      expect(response.status).toBe(200);
+    });
+
+    it('should exclude content fields when includeContent=false', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
+      const mockResume = {
+        _id: 'resume123',
+        title: 'Test Resume',
+        userId: 'user123',
+      };
+
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockResumeModel.findById.mockResolvedValueOnce(mockResume); // First call for existence check
+      mockResumeModel.findById.mockResolvedValueOnce(mockResume); // Second call with projection
+
+      const request = new NextRequest('http://localhost:3000/api/resumes/resume123?includeContent=false');
+      const response = await GET_BY_ID(request, { params: { id: 'resume123' } });
+
+      expect(mockResumeModel.findById).toHaveBeenCalledWith('resume123', {
+        content: 0, photos: 0, certifications: 0, hobbies: 0, references: 0
+      });
+    });
+
+    it('should return 404 when resume not found', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
+
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockResumeModel.findById.mockResolvedValue(null);
+
+      const request = new NextRequest('http://localhost:3000/api/resumes/nonexistent');
+      const response = await GET_BY_ID(request, { params: { id: 'nonexistent' } });
+
+      expect(mockCreateErrorResponse).toHaveBeenCalledWith('Resume not found', 404, expect.any(String));
+    });
+
+    it('should return 403 when user does not own resume', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
+      const mockResume = {
+        _id: 'resume123',
+        title: 'Test Resume',
+        userId: 'differentUser', // Different user
+      };
+
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockResumeModel.findById.mockResolvedValue(mockResume);
+
+      const request = new NextRequest('http://localhost:3000/api/resumes/resume123');
+      const response = await GET_BY_ID(request, { params: { id: 'resume123' } });
+
+      expect(mockCreateErrorResponse).toHaveBeenCalledWith('Access denied: Resume does not belong to user', 403, expect.any(String));
     });
   });
 
-  describe('GET /api/resumes/:id', () => {
-    it('should return resume by ID', async () => {
-      const resumeId = '507f1f77bcf86cd799439011';
-
-      const response = await request(server)
-        .get(`/api/resumes/${resumeId}`)
-        .expect(200);
-
-      expect(response.body).toHaveProperty('success', true);
-    });
-
-    it('should handle non-existent resume ID', async () => {
-      const nonExistentId = '507f1f77bcf86cd799439012';
-
-      const response = await request(server)
-        .get(`/api/resumes/${nonExistentId}`)
-        .expect(404);
-
-      expect(response.body).toHaveProperty('success', false);
-    });
-
-    it('should handle invalid resume ID format', async () => {
-      const invalidId = 'invalid-id';
-
-      const response = await request(server)
-        .get(`/api/resumes/${invalidId}`)
-        .expect(400);
-
-      expect(response.body).toHaveProperty('success', false);
-    });
-  });
-
-  describe('PUT /api/resumes/:id', () => {
-    it('should update resume with valid data', async () => {
-      const resumeId = '507f1f77bcf86cd799439011';
+  describe('PUT /api/resumes/[id] (Update Resume)', () => {
+    it('should update resume successfully', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
+      const existingResume = {
+        _id: 'resume123',
+        title: 'Old Title',
+        content: 'Old content',
+        locale: 'en-US',
+        userId: 'user123',
+        version: 1,
+      };
       const updateData = {
-        title: 'Updated Resume',
-        content: 'Updated content',
-        locale: 'en-US',
+        title: 'New Title',
+        content: 'New content',
       };
+      const updatedResume = { ...existingResume, ...updateData, version: 2 };
 
-      const response = await request(server)
-        .put(`/api/resumes/${resumeId}`)
-        .send(updateData)
-        .set('Content-Type', 'application/json')
-        .expect(200);
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockResumeModel.findById.mockResolvedValue(existingResume);
+      mockResumeModel.findOneAndUpdate.mockResolvedValue(updatedResume);
 
-      expect(response.body).toHaveProperty('success', true);
+      const request = new NextRequest('http://localhost:3000/api/resumes/resume123', {
+        method: 'PUT',
+        body: JSON.stringify(updateData),
+      });
+      const response = await PUT(request, { params: { id: 'resume123' } });
+
+      expect(mockResumeModel.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: 'resume123', userId: mockUser._id },
+        { ...updateData, $inc: { version: 1 } },
+        { new: true, runValidators: true }
+      );
+      expect(mockCacheManager.invalidatePattern).toHaveBeenCalled();
+      expect(mockCacheManager.delete).toHaveBeenCalled();
+      expect(response.status).toBe(200);
     });
 
-    it('should reject update with invalid data', async () => {
-      const resumeId = '507f1f77bcf86cd799439011';
-      const invalidUpdate = {
-        title: 'A'.repeat(101), // Too long title
-        content: 'Content',
-        locale: 'en-US',
+    it('should use existing locale when not provided in update', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
+      const existingResume = {
+        _id: 'resume123',
+        title: 'Old Title',
+        locale: 'en-GB',
+        userId: 'user123',
+        version: 1,
       };
+      const updateData = { title: 'New Title' };
 
-      const response = await request(server)
-        .put(`/api/resumes/${resumeId}`)
-        .send(invalidUpdate)
-        .set('Content-Type', 'application/json')
-        .expect(400);
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockResumeModel.findById.mockResolvedValue(existingResume);
+      mockValidateResumeModelData.mockReturnValue({});
 
-      expect(response.body).toHaveProperty('success', false);
+      const request = new NextRequest('http://localhost:3000/api/resumes/resume123', {
+        method: 'PUT',
+        body: JSON.stringify(updateData),
+      });
+      const response = await PUT(request, { params: { id: 'resume123' } });
+
+      expect(mockValidateResumeModelData).toHaveBeenCalledWith({ ...updateData, locale: 'en-GB' });
     });
 
-    it('should handle concurrent updates', async () => {
-      const resumeId = '507f1f77bcf86cd799439011';
-      const updateData1 = { title: 'Update 1' };
-      const updateData2 = { title: 'Update 2' };
+    it('should handle validation errors on update', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
+      const existingResume = {
+        _id: 'resume123',
+        title: 'Old Title',
+        locale: 'en-US',
+        userId: 'user123',
+      };
+      const validationErrors = { title: 'Title too long' };
 
-      const [response1, response2] = await Promise.all([
-        request(server)
-          .put(`/api/resumes/${resumeId}`)
-          .send(updateData1)
-          .set('Content-Type', 'application/json'),
-        request(server)
-          .put(`/api/resumes/${resumeId}`)
-          .send(updateData2)
-          .set('Content-Type', 'application/json'),
-      ]);
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockResumeModel.findById.mockResolvedValue(existingResume);
+      mockValidateResumeModelData.mockReturnValue(validationErrors);
 
-      // Both should succeed or one should handle the conflict
-      expect(response1.status === 200 || response2.status === 200).toBe(true);
+      const request = new NextRequest('http://localhost:3000/api/resumes/resume123', {
+        method: 'PUT',
+        body: JSON.stringify({ title: 'A'.repeat(200) }),
+      });
+      const response = await PUT(request, { params: { id: 'resume123' } });
+
+      expect(mockHandleValidationError).toHaveBeenCalledWith(validationErrors);
     });
   });
 
-  describe('DELETE /api/resumes/:id', () => {
+  describe('DELETE /api/resumes/[id] (Delete Resume)', () => {
     it('should delete resume successfully', async () => {
-      const resumeId = '507f1f77bcf86cd799439011';
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
+      const mockResume = {
+        _id: 'resume123',
+        title: 'Test Resume',
+        userId: 'user123',
+      };
 
-      const response = await request(server)
-        .delete(`/api/resumes/${resumeId}`)
-        .expect(200);
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockResumeModel.findById.mockResolvedValue(mockResume);
+      mockResumeModel.deleteOne.mockResolvedValue({ deletedCount: 1 });
 
-      expect(response.body).toHaveProperty('success', true);
+      const request = new NextRequest('http://localhost:3000/api/resumes/resume123', {
+        method: 'DELETE',
+      });
+      const response = await DELETE_BY_ID(request, { params: { id: 'resume123' } });
+
+      expect(mockResumeModel.deleteOne).toHaveBeenCalledWith({ _id: 'resume123', userId: mockUser._id });
+      expect(mockCacheManager.invalidatePattern).toHaveBeenCalled();
+      expect(mockCacheManager.delete).toHaveBeenCalled();
+      expect(response.status).toBe(200);
     });
 
-    it('should handle deleting non-existent resume', async () => {
-      const nonExistentId = '507f1f77bcf86cd799439012';
+    it('should return 404 when resume not found for deletion', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
 
-      const response = await request(server)
-        .delete(`/api/resumes/${nonExistentId}`)
-        .expect(404);
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockResumeModel.findById.mockResolvedValue(null);
 
-      expect(response.body).toHaveProperty('success', false);
-    });
-  });
-
-  describe('Comments API', () => {
-    describe('GET /api/resumes/:id/comments', () => {
-      it('should return comments for resume', async () => {
-        const resumeId = '507f1f77bcf86cd799439011';
-
-        const response = await request(server)
-          .get(`/api/resumes/${resumeId}/comments`)
-          .expect(200);
-
-        expect(response.body).toHaveProperty('success', true);
-        expect(Array.isArray(response.body.data)).toBe(true);
+      const request = new NextRequest('http://localhost:3000/api/resumes/nonexistent', {
+        method: 'DELETE',
       });
+      const response = await DELETE_BY_ID(request, { params: { id: 'nonexistent' } });
+
+      expect(mockCreateErrorResponse).toHaveBeenCalledWith('Resume not found', 404, expect.any(String));
     });
 
-    describe('POST /api/resumes/:id/comments', () => {
-      it('should add comment to resume', async () => {
-        const resumeId = '507f1f77bcf86cd799439011';
-        const commentData = {
-          field: 'personalInfo-name',
-          text: 'This is a test comment',
-          author: 'Test User',
-        };
+    it('should return 404 when delete operation affects no documents', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
+      const mockResume = {
+        _id: 'resume123',
+        title: 'Test Resume',
+        userId: 'user123',
+      };
 
-        const response = await request(server)
-          .post(`/api/resumes/${resumeId}/comments`)
-          .send(commentData)
-          .set('Content-Type', 'application/json')
-          .expect(200);
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockResumeModel.findById.mockResolvedValue(mockResume);
+      mockResumeModel.deleteOne.mockResolvedValue({ deletedCount: 0 });
 
-        expect(response.body).toHaveProperty('success', true);
+      const request = new NextRequest('http://localhost:3000/api/resumes/resume123', {
+        method: 'DELETE',
       });
+      const response = await DELETE_BY_ID(request, { params: { id: 'resume123' } });
 
-      it('should reject invalid comment data', async () => {
-        const resumeId = '507f1f77bcf86cd799439011';
-        const invalidComment = {
-          field: '', // Empty field
-          text: 'Comment text',
-          author: 'Test User',
-        };
-
-        const response = await request(server)
-          .post(`/api/resumes/${resumeId}/comments`)
-          .send(invalidComment)
-          .set('Content-Type', 'application/json')
-          .expect(400);
-
-        expect(response.body).toHaveProperty('success', false);
-      });
+      expect(mockCreateErrorResponse).toHaveBeenCalledWith('Resume not found', 404, expect.any(String));
     });
   });
 
   describe('Error Handling', () => {
     it('should handle database connection errors', async () => {
-      // This would require mocking database errors
-      const response = await request(server)
-        .get('/api/resumes')
-        .expect(200);
+      mockDbConnect.mockRejectedValue(new Error('Connection failed'));
 
-      // Should handle gracefully
-      expect(response.body).toBeDefined();
+      const request = new NextRequest('http://localhost:3000/api/resumes');
+      const response = await GET(request);
+
+      expect(mockHandleDatabaseError).toHaveBeenCalled();
     });
 
-    it('should handle malformed JSON', async () => {
-      const response = await request(server)
-        .post('/api/resumes')
-        .set('Content-Type', 'application/json')
-        .send('{invalid json}')
-        .expect(400);
-
-      expect(response.body).toHaveProperty('success', false);
-    });
-
-    it('should handle very large payloads', async () => {
-      const largePayload = {
-        title: 'Large Resume',
-        content: 'A'.repeat(1000000), // 1MB content
-        locale: 'en-US',
-      };
-
-      const response = await request(server)
-        .post('/api/resumes')
-        .send(largePayload)
-        .set('Content-Type', 'application/json')
-        .expect(413); // Payload too large
-
-      expect(response.body).toHaveProperty('success', false);
-    });
-  });
-
-  describe('Authentication and Authorization', () => {
-    it('should handle unauthenticated requests', async () => {
-      const response = await request(server)
-        .post('/api/resumes')
-        .send({ title: 'Test', content: 'Content', locale: 'en-US' })
-        .expect(401);
-
-      expect(response.body).toHaveProperty('success', false);
-    });
-
-    it('should handle unauthorized access', async () => {
-      const response = await request(server)
-        .delete('/api/resumes/507f1f77bcf86cd799439011')
-        .set('Authorization', 'Bearer invalid-token')
-        .expect(403);
-
-      expect(response.body).toHaveProperty('success', false);
-    });
-  });
-
-  describe('Rate Limiting', () => {
-    it('should handle rate limiting', async () => {
-      // Make multiple rapid requests
-      const requests = Array(100).fill().map(() =>
-        request(server).get('/api/resumes')
-      );
-
-      const responses = await Promise.all(requests);
-
-      // Some requests should be rate limited
-      const rateLimitedResponses = responses.filter(r => r.status === 429);
-      expect(rateLimitedResponses.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('Performance', () => {
-    it('should respond within acceptable time', async () => {
-      const startTime = Date.now();
-
-      await request(server)
-        .get('/api/resumes')
-        .expect(200);
-
-      const endTime = Date.now();
-      const responseTime = endTime - startTime;
-
-      expect(responseTime).toBeLessThan(1000); // Less than 1 second
-    });
-
-    it('should handle multiple concurrent requests', async () => {
-      const concurrentRequests = Array(10).fill().map(() =>
-        request(server).get('/api/resumes')
-      );
-
-      const responses = await Promise.all(concurrentRequests);
-
-      responses.forEach(response => {
-        expect(response.status).toBe(200);
-        expect(response.body).toHaveProperty('success', true);
+    it('should handle JSON parsing errors in POST', async () => {
+      const request = new NextRequest('http://localhost:3000/api/resumes', {
+        method: 'POST',
+        body: 'invalid json',
       });
+
+      await expect(POST(request)).rejects.toThrow();
+    });
+
+    it('should handle invalid ObjectId in GET by ID', async () => {
+      const mockUser = { _id: 'user123', email: 'test@example.com' };
+
+      mockUserModel.findOne.mockResolvedValue(mockUser);
+      mockResumeModel.findById.mockRejectedValue(new Error('Invalid ObjectId'));
+
+      const request = new NextRequest('http://localhost:3000/api/resumes/invalid-id');
+      const response = await GET_BY_ID(request, { params: { id: 'invalid-id' } });
+
+      expect(mockCreateErrorResponse).toHaveBeenCalledWith(
+        'Failed to retrieve resume: Invalid ObjectId',
+        500,
+        expect.any(String)
+      );
     });
   });
 });

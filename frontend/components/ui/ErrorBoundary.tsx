@@ -32,9 +32,6 @@ class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log the error to console and potentially to a logging service
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-
-    // TODO: Integrate with backend logger if needed
-    // For now, using console.error as per frontend context
   }
 
   handleRetry = () => {
